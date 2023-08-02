@@ -185,7 +185,6 @@ def get_interpolated_poses(pose_a: NDArray, pose_b: NDArray, steps: int = 10) ->
         poses_ab.append(pose[:3])
     return poses_ab
 
-
 def get_interpolated_k(
     k_a: Float[Tensor, "3 3"], k_b: Float[Tensor, "3 3"], steps: int = 10
 ) -> List[Float[Tensor, "3 4"]]:
@@ -278,6 +277,41 @@ def get_interpolated_poses_many(
     k_interp = torch.stack(k_interp, dim=0)
 
     return torch.tensor(traj, dtype=torch.float32), torch.tensor(k_interp, dtype=torch.float32)
+
+def get_angled_poses(
+    poses: Float[Tensor, "num_poses 3 4"],
+    Ks: Float[Tensor, "num_poses 3 3"],
+    angle: float = 0.,
+) -> Tuple[Float[Tensor, "num_poses 3 4"], Float[Tensor, "num_poses 3 3"]]:
+    """Return angled poses for many camera poses.
+
+    Args:
+        poses: list of camera poses
+        Ks: list of camera intrinsics
+        angle: degrees to turn the camera by
+
+    Returns:
+        tuple of new poses and intrinsics
+    """
+    traj = []
+    k = []
+
+    unit_vec = torch.tensor([0., 0., -1.])
+    angled_vec = torch.tensor([-np.sin(angle * np.pi / 180.), 0., -np.cos(angle * np.pi / 180.)])
+    rotmat = rotation_matrix(unit_vec, angled_vec)
+
+
+    for idx in range(poses.shape[0]):
+        pose = poses[idx].cpu().numpy()
+        pose[:, :3] = rotmat @ pose[:, :3]
+        
+        traj.append(pose)
+        k.append(Ks[idx])
+
+    traj = np.stack(traj, axis=0)
+    k = torch.stack(k, dim=0)
+
+    return torch.tensor(traj, dtype=torch.float32), torch.tensor(k, dtype=torch.float32)
 
 
 def normalize(x: torch.Tensor) -> Float[Tensor, "*batch"]:

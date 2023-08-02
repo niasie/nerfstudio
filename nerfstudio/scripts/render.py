@@ -48,6 +48,7 @@ from torch import Tensor
 from typing_extensions import Annotated
 
 from nerfstudio.cameras.camera_paths import (
+    get_angled_camera_path,
     get_interpolated_camera_path,
     get_path_from_json,
     get_spiral_path,
@@ -542,6 +543,55 @@ class RenderInterpolated(BaseRender):
             colormap_options=self.colormap_options,
         )
 
+class RenderAngled(BaseRender):
+    """Render a trajectory that which angles the original dataset."""
+
+    pose_source: Literal["eval", "train"] = "eval"
+    """Pose source to render."""
+    angle: float = 45.
+    """Degrees to angle the dataset view by."""
+    frame_rate: int = 24
+    """Frame rate of the output video."""
+    output_format: Literal["images", "video", "numpy"] = "video"
+    """How to save output data."""
+
+    def main(self) -> None:
+        """Main function."""
+        _, pipeline, _, _ = eval_setup(
+            self.load_config,
+            eval_num_rays_per_chunk=self.eval_num_rays_per_chunk,
+            test_mode="test",
+        )
+
+        install_checks.check_ffmpeg_installed()
+
+        if self.pose_source == "eval":
+            assert pipeline.datamanager.eval_dataset is not None
+            cameras = pipeline.datamanager.eval_dataset.cameras
+        else:
+            assert pipeline.datamanager.train_dataset is not None
+            cameras = pipeline.datamanager.train_dataset.cameras
+
+        seconds = self.interpolation_steps * len(cameras) / self.frame_rate
+        camera_path = get_angled_camera_path(
+            cameras=cameras,
+            steps=self.interpolation_steps,
+            order_poses=self.order_poses,
+        )
+
+        _render_trajectory_video(
+            pipeline,
+            camera_path,
+            output_filename=self.output_path,
+            rendered_output_names=self.rendered_output_names,
+            rendered_resolution_scaling_factor=1.0 / self.downscale_factor,
+            seconds=seconds,
+            output_format=self.output_format,
+            image_format=self.image_format,
+            depth_near_plane=self.depth_near_plane,
+            depth_far_plane=self.depth_far_plane,
+            colormap_options=self.colormap_options,
+        )
 
 @dataclass
 class SpiralRender(BaseRender):
@@ -589,6 +639,7 @@ class SpiralRender(BaseRender):
 Commands = tyro.conf.FlagConversionOff[
     Union[
         Annotated[RenderCameraPath, tyro.conf.subcommand(name="camera-path")],
+        Annotated[RenderInterpolated, tyro.conf.subcommand(name="angled")],
         Annotated[RenderInterpolated, tyro.conf.subcommand(name="interpolate")],
         Annotated[SpiralRender, tyro.conf.subcommand(name="spiral")],
     ]
