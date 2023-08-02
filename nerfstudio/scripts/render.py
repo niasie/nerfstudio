@@ -71,7 +71,7 @@ def _render_trajectory_video(
     crop_data: Optional[CropData] = None,
     rendered_resolution_scaling_factor: float = 1.0,
     seconds: float = 5.0,
-    output_format: Literal["images", "video"] = "video",
+    output_format: Literal["images", "video", "numpy"] = "video",
     image_format: Literal["jpeg", "png"] = "jpeg",
     jpeg_quality: int = 100,
     depth_near_plane: Optional[float] = None,
@@ -155,17 +155,20 @@ def _render_trajectory_video(
                     output_image = outputs[rendered_output_name]
                     is_depth = rendered_output_name.find("depth") != -1
                     if is_depth:
-                        output_image = (
-                            colormaps.apply_depth_colormap(
-                                output_image,
-                                accumulation=outputs["accumulation"],
-                                near_plane=depth_near_plane,
-                                far_plane=depth_far_plane,
-                                colormap_options=colormap_options,
+                        if output_format is not "numpy":
+                            output_image = (
+                                colormaps.apply_depth_colormap(
+                                    output_image,
+                                    accumulation=outputs["accumulation"],
+                                    near_plane=depth_near_plane,
+                                    far_plane=depth_far_plane,
+                                    colormap_options=colormap_options,
+                                )
+                                .cpu()
+                                .numpy()
                             )
-                            .cpu()
-                            .numpy()
-                        )
+                        else:
+                            output_image = output_image.cpu().numpy()
                     else:
                         output_image = (
                             colormaps.apply_colormap(
@@ -196,6 +199,9 @@ def _render_trajectory_video(
                             )
                         )
                     writer.add_image(render_image)
+                if output_format == "numpy":
+                    np.save(output_image_dir / f"{camera_idx:05d}.npy", output_image)
+
 
     table = Table(
         title=None,
@@ -347,7 +353,7 @@ class RenderCameraPath(BaseRender):
 
     camera_path_filename: Path = Path("camera_path.json")
     """Filename of the camera path to render."""
-    output_format: Literal["images", "video"] = "video"
+    output_format: Literal["images", "video", "numpy"] = "video"
     """How to save output data."""
 
     def main(self) -> None:
@@ -495,7 +501,7 @@ class RenderInterpolated(BaseRender):
     """Whether to order camera poses by proximity."""
     frame_rate: int = 24
     """Frame rate of the output video."""
-    output_format: Literal["images", "video"] = "video"
+    output_format: Literal["images", "video", "numpy"] = "video"
     """How to save output data."""
 
     def main(self) -> None:
