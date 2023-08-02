@@ -298,7 +298,12 @@ def get_angled_poses(
 
     unit_vec = torch.tensor([0., 0., -1.], dtype=torch.float32)
     angled_vec = torch.tensor([-np.sin(angle * np.pi / 180.), 0., -np.cos(angle * np.pi / 180.)], dtype=torch.float32)
-    rotmat = rotation_matrix(unit_vec, angled_vec)
+    
+    angle = angle * np.pi / 180
+
+    rotmat = np.transpose(np.array([[np.cos(angle), -np.sin(angle), 0],
+                                    [np.sin(angle), np.cos(angle), 0],
+                                    [0, 0, 1]]))
 
 
     for idx in range(poses.shape[0]):
