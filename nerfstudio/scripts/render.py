@@ -639,7 +639,7 @@ class SpiralRender(BaseRender):
 Commands = tyro.conf.FlagConversionOff[
     Union[
         Annotated[RenderCameraPath, tyro.conf.subcommand(name="camera-path")],
-        Annotated[RenderInterpolated, tyro.conf.subcommand(name="angled")],
+        Annotated[RenderAngled, tyro.conf.subcommand(name="angled")],
         Annotated[RenderInterpolated, tyro.conf.subcommand(name="interpolate")],
         Annotated[SpiralRender, tyro.conf.subcommand(name="spiral")],
     ]
