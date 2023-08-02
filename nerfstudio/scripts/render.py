@@ -543,6 +543,7 @@ class RenderInterpolated(BaseRender):
             colormap_options=self.colormap_options,
         )
 
+@dataclass
 class RenderAngled(BaseRender):
     """Render a trajectory that which angles the original dataset."""
 
