@@ -573,11 +573,10 @@ class RenderAngled(BaseRender):
             assert pipeline.datamanager.train_dataset is not None
             cameras = pipeline.datamanager.train_dataset.cameras
 
-        seconds = self.interpolation_steps * len(cameras) / self.frame_rate
+        seconds = len(cameras) / self.frame_rate
         camera_path = get_angled_camera_path(
             cameras=cameras,
-            steps=self.interpolation_steps,
-            order_poses=self.order_poses,
+            angle=self.angle
         )
 
         _render_trajectory_video(
