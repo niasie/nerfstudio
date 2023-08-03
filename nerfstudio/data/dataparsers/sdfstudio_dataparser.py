@@ -149,8 +149,8 @@ class SDFStudio(DataParser):
             cameras=cameras,
             scene_box=scene_box,
             metadata={
-                "depth_filenames": depth_filenames if len(depth_filenames) > 0 else None,
-                "normal_filenames": normal_filenames if len(normal_filenames) > 0 else None,
+                "depth_filenames": depth_filenames if len(depth_filenames) > 0 and self.config.include_mono_prior else None,
+                "normal_filenames": normal_filenames if len(normal_filenames) > 0 and self.config.include_mono_prior else None,
                 "transform": transform,
                 # required for normal maps, these are in colmap format so they require c2w before conversion
                 "camera_to_worlds": c2w_colmap if len(c2w_colmap) > 0 else None,
