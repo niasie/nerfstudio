@@ -102,12 +102,6 @@ class DepthDataset(InputDataset):
             self.metadata["depth_filenames"] = None
             self.metadata["depth_unit_scale_factor"] = 1.0
 
-<<<<<<< HEAD
-        else:
-            losses.DEPTH_METRIC = 1
-
-=======
->>>>>>> 6af0bcfbf867584f357082a80877c9ce640f9867
         self.depth_filenames = self.metadata["depth_filenames"]
         self.depth_unit_scale_factor = self.metadata["depth_unit_scale_factor"]
 
