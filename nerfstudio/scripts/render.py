@@ -180,7 +180,7 @@ def _render_trajectory_video(
                             .numpy()
                         )
                     render_image.append(output_image)
-                render_image = np.concatenate(render_image, axis=1)
+                render_image = np.concatenate(render_image, axis=0)
                 if output_format == "images":
                     if image_format == "png":
                         media.write_image(output_image_dir / f"{camera_idx:05d}.png", render_image, fmt="png")

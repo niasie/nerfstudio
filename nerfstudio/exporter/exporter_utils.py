@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-import open3d as o3d
+# import open3d as o3d
 import pymeshlab
 import torch
 from jaxtyping import Float

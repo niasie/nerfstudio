@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple, Union, cast
 
 import numpy as np
-import open3d as o3d
+# import open3d as o3d
 import torch
 import tyro
 from typing_extensions import Annotated, Literal
