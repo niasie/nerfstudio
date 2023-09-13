@@ -72,7 +72,7 @@ def _render_trajectory_video(
     crop_data: Optional[CropData] = None,
     rendered_resolution_scaling_factor: float = 1.0,
     seconds: float = 5.0,
-    output_format: Literal["images", "video", "numpy"] = "video",
+    output_format: Literal["images", "raw-separate", "video", "numpy"] = "video",
     image_format: Literal["jpeg", "png"] = "jpeg",
     jpeg_quality: int = 100,
     depth_near_plane: Optional[float] = None,
@@ -170,6 +170,9 @@ def _render_trajectory_video(
                             )
                         else:
                             output_image = output_image.cpu().numpy()
+
+                            if output_format is "raw-separate":
+                                media.write_image(output_image_dir / f"{camera_idx:05d}_depth.png", output_image, fmt="png")
                     else:
                         output_image = (
                             colormaps.apply_colormap(
@@ -179,6 +182,10 @@ def _render_trajectory_video(
                             .cpu()
                             .numpy()
                         )
+
+                        if output_format is "raw-separate":
+                                media.write_image(output_image_dir / f"{camera_idx:05d}_rgb.png", output_image, fmt="png")
+                    
                     render_image.append(output_image)
                 render_image = np.concatenate(render_image, axis=0)
                 if output_format == "images":
@@ -553,7 +560,7 @@ class RenderAngled(BaseRender):
     """Degrees to angle the dataset view by."""
     frame_rate: int = 24
     """Frame rate of the output video."""
-    output_format: Literal["images", "video", "numpy"] = "video"
+    output_format: Literal["images", "video", "numpy, raw-separate"] = "video"
     """How to save output data."""
 
     def main(self) -> None:
