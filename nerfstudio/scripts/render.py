@@ -156,7 +156,7 @@ def _render_trajectory_video(
                     output_image = outputs[rendered_output_name]
                     is_depth = rendered_output_name.find("depth") != -1
                     if is_depth:
-                        if output_format is not "numpy":
+                        if output_format != "numpy":
                             output_image = (
                                 colormaps.apply_depth_colormap(
                                     output_image,
@@ -171,7 +171,7 @@ def _render_trajectory_video(
                         else:
                             output_image = output_image.cpu().numpy()
 
-                            if output_format is "raw-separate":
+                            if output_format == "raw-separate":
                                 media.write_image(output_image_dir / f"{camera_idx:05d}_depth.png", output_image, fmt="png")
                     else:
                         output_image = (
@@ -183,7 +183,7 @@ def _render_trajectory_video(
                             .numpy()
                         )
 
-                        if output_format is "raw-separate":
+                        if output_format == "raw-separate":
                                 media.write_image(output_image_dir / f"{camera_idx:05d}_rgb.png", output_image, fmt="png")
                     
                     render_image.append(output_image)
@@ -560,7 +560,7 @@ class RenderAngled(BaseRender):
     """Degrees to angle the dataset view by."""
     frame_rate: int = 24
     """Frame rate of the output video."""
-    output_format: Literal["images", "video", "numpy, raw-separate"] = "video"
+    output_format: Literal["images", "video", "numpy", "raw-separate"] = "video"
     """How to save output data."""
 
     def main(self) -> None:
