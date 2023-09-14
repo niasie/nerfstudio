@@ -113,8 +113,11 @@ def _render_trajectory_video(
         TimeRemainingColumn(elapsed_when_finished=False, compact=False),
         TimeElapsedColumn(),
     )
+
+    DATAPARSER_SCALE = pipeline.datamanager.train_dataparser_outputs.dataparser_scale
+
     output_image_dir = output_filename.parent / output_filename.stem
-    if output_format == "images" or "numpy" or "raw-separate":
+    if output_format in ("images", "numpy", "raw-separate"):
         output_image_dir.mkdir(parents=True, exist_ok=True)
     if output_format == "video":
         # make the folder if it doesn't exist
@@ -166,10 +169,18 @@ def _render_trajectory_video(
                             np.save(output_image_dir / f"{camera_idx:05d}_depth.npy", output_image)
 
                         elif output_format == "raw-separate":
-                            output_image = np.squeeze(output_image.cpu().numpy() * 256).astype("uint16")
+                            output_image = np.squeeze(output_image.cpu().numpy() * 256 * DATAPARSER_SCALE)
+
+                            MAX_DEPTH = 85.0
+                            output_image = np.where(output_image < MAX_DEPTH, output_image, 0)
+                            
+                            output_image = output_image.astype("uint16")
+
+                            # plt.imshow(output_image)
+                            # plt.show()
                             cv2.imwrite(str(output_image_dir / f"{camera_idx:05d}_depth.png"), output_image)
                             
-                        elif output_format == "images" or output_format == "video":
+                        elif output_format in ("images", "video"):
                             output_image = (
                                 colormaps.apply_depth_colormap(
                                     output_image,
@@ -201,10 +212,10 @@ def _render_trajectory_video(
                             .numpy()
                         )
 
-                        if output_format == "raw-separate" or output_format == "numpy":
+                        if output_format in ("raw-separate", "numpy"):
                             media.write_image(output_image_dir / f"{camera_idx:05d}_rgb.png", output_image, fmt="png")
 
-                        elif output_format == "images" or output_format == "video":
+                        elif output_format in ("images", "video"):
                             render_image.append(output_image)
 
                         else:
