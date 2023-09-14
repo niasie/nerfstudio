@@ -64,6 +64,8 @@ from nerfstudio.utils.eval_utils import eval_setup
 from nerfstudio.utils.rich_utils import CONSOLE, ItersPerSecColumn
 from nerfstudio.utils.scripts import run_command
 
+import matplotlib.pyplot as plt
+
 
 def _render_trajectory_video(
     pipeline: Pipeline,
@@ -112,7 +114,7 @@ def _render_trajectory_video(
         TimeElapsedColumn(),
     )
     output_image_dir = output_filename.parent / output_filename.stem
-    if output_format == "images" or output_format == "raw-separate":
+    if output_format == "images" or "numpy" or "raw-separate":
         output_image_dir.mkdir(parents=True, exist_ok=True)
     if output_format == "video":
         # make the folder if it doesn't exist
@@ -156,11 +158,18 @@ def _render_trajectory_video(
                         sys.exit(1)
                     output_image = outputs[rendered_output_name]
                     is_depth = rendered_output_name.find("depth") != -1
-                    if is_depth:
-                        if output_format == "raw-separate":
-                            cv2.imwrite(str(output_image_dir / f"{camera_idx:05d}_depth.png"), (output_image[..., 0] * 256).cpu().numpy().astype("uint16"))
 
-                        if output_format != "numpy":
+                    #Depth branch
+                    if is_depth:
+                        if output_format == "numpy":
+                            output_image = output_image.cpu().numpy()
+                            np.save(output_image_dir / f"{camera_idx:05d}_depth.npy", output_image)
+
+                        elif output_format == "raw-separate":
+                            output_image = np.squeeze(output_image.cpu().numpy() * 256).astype("uint16")
+                            cv2.imwrite(str(output_image_dir / f"{camera_idx:05d}_depth.png"), output_image)
+                            
+                        elif output_format == "images" or output_format == "video":
                             output_image = (
                                 colormaps.apply_depth_colormap(
                                     output_image,
@@ -172,8 +181,16 @@ def _render_trajectory_video(
                                 .cpu()
                                 .numpy()
                             )
+                            
+                            render_image.append(output_image)
+
                         else:
-                            output_image = output_image.cpu().numpy()
+                            CONSOLE.rule("Error", style="red")
+                            CONSOLE.print(f"Specified output-format doesn't exist", justify="center")
+                            sys.exit(1)
+
+
+                    #RGB Branch
                     else:
                         output_image = (
                             colormaps.apply_colormap(
@@ -184,12 +201,21 @@ def _render_trajectory_video(
                             .numpy()
                         )
 
-                        if output_format == "raw-separate":
+                        if output_format == "raw-separate" or output_format == "numpy":
                             media.write_image(output_image_dir / f"{camera_idx:05d}_rgb.png", output_image, fmt="png")
+
+                        elif output_format == "images" or output_format == "video":
+                            render_image.append(output_image)
+
+                        else:
+                            CONSOLE.rule("Error", style="red")
+                            CONSOLE.print(f"Specified output-format doesn't exist", justify="center")
+                            sys.exit(1)
                     
-                    render_image.append(output_image)
-                render_image = np.concatenate(render_image, axis=0)
+                
                 if output_format == "images":
+                    render_image = np.concatenate(render_image, axis=0)
+
                     if image_format == "png":
                         media.write_image(output_image_dir / f"{camera_idx:05d}.png", render_image, fmt="png")
                     if image_format == "jpeg":
@@ -197,6 +223,8 @@ def _render_trajectory_video(
                             output_image_dir / f"{camera_idx:05d}.jpg", render_image, fmt="jpeg", quality=jpeg_quality
                         )
                 if output_format == "video":
+                    render_image = np.concatenate(render_image, axis=0)
+
                     if writer is None:
                         render_width = int(render_image.shape[1])
                         render_height = int(render_image.shape[0])
@@ -208,8 +236,6 @@ def _render_trajectory_video(
                             )
                         )
                     writer.add_image(render_image)
-                if output_format == "numpy":
-                    np.save(output_image_dir / f"{camera_idx:05d}.npy", output_image)
 
 
     table = Table(
