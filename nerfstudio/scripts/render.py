@@ -114,7 +114,7 @@ def _render_trajectory_video(
         TimeElapsedColumn(),
     )
     output_image_dir = output_filename.parent / output_filename.stem
-    if output_format == "images" or "numpy" or "raw-separate":
+    if output_format == "images" or output_format == "numpy" or output_format == "raw-separate":
         output_image_dir.mkdir(parents=True, exist_ok=True)
     if output_format == "video":
         # make the folder if it doesn't exist
