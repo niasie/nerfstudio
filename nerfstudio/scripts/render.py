@@ -46,6 +46,7 @@ from rich.progress import (
 from rich.table import Table
 from torch import Tensor
 from typing_extensions import Annotated
+import cv2
 
 from nerfstudio.cameras.camera_paths import (
     get_angled_camera_path,
@@ -111,7 +112,7 @@ def _render_trajectory_video(
         TimeElapsedColumn(),
     )
     output_image_dir = output_filename.parent / output_filename.stem
-    if output_format == "images":
+    if output_format == "images" or output_format == "raw-separate":
         output_image_dir.mkdir(parents=True, exist_ok=True)
     if output_format == "video":
         # make the folder if it doesn't exist
@@ -156,6 +157,9 @@ def _render_trajectory_video(
                     output_image = outputs[rendered_output_name]
                     is_depth = rendered_output_name.find("depth") != -1
                     if is_depth:
+                        if output_format == "raw-separate":
+                            cv2.imwrite(str(output_image_dir / f"{camera_idx:05d}_depth.png"), (output_image[..., 0] * 256).cpu().numpy().astype("uint16"))
+
                         if output_format != "numpy":
                             output_image = (
                                 colormaps.apply_depth_colormap(
@@ -170,9 +174,6 @@ def _render_trajectory_video(
                             )
                         else:
                             output_image = output_image.cpu().numpy()
-
-                            if output_format == "raw-separate":
-                                media.write_image(output_image_dir / f"{camera_idx:05d}_depth.png", output_image, fmt="png")
                     else:
                         output_image = (
                             colormaps.apply_colormap(
@@ -184,7 +185,7 @@ def _render_trajectory_video(
                         )
 
                         if output_format == "raw-separate":
-                                media.write_image(output_image_dir / f"{camera_idx:05d}_rgb.png", output_image, fmt="png")
+                            media.write_image(output_image_dir / f"{camera_idx:05d}_rgb.png", output_image, fmt="png")
                     
                     render_image.append(output_image)
                 render_image = np.concatenate(render_image, axis=0)
