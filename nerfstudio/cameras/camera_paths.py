@@ -71,6 +71,8 @@ def get_angled_camera_path(cameras: Cameras, angle: float) -> Cameras:
         cy=Ks[0, 1, 2],
         camera_type=cameras.camera_type[0],
         camera_to_worlds=poses,
+        width=cameras.width,
+        height=cameras.height
     )
     return cameras
 

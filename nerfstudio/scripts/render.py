@@ -115,6 +115,7 @@ def _render_trajectory_video(
     )
 
     DATAPARSER_SCALE = pipeline.datamanager.train_dataparser_outputs.dataparser_scale
+    DEPTH_UNIT_SCALE = pipeline.datamanager.dataparser_config.depth_unit_scale_factor
 
     output_image_dir = output_filename.parent / output_filename.stem
     if output_format in ("images", "numpy", "raw-separate"):
@@ -169,9 +170,10 @@ def _render_trajectory_video(
                             np.save(output_image_dir / f"{camera_idx:05d}_depth.npy", output_image)
 
                         elif output_format == "raw-separate":
-                            output_image = np.squeeze(output_image.cpu().numpy() * 256 * DATAPARSER_SCALE)
+                            output_image = np.squeeze(output_image.cpu().numpy()) * (1 / DEPTH_UNIT_SCALE) * (1 / DATAPARSER_SCALE)
 
-                            MAX_DEPTH = 85.0
+                            MAX_DEPTH = 85.0 / DEPTH_UNIT_SCALE
+
                             output_image = np.where(output_image < MAX_DEPTH, output_image, 0)
                             
                             output_image = output_image.astype("uint16")
