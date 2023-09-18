@@ -158,12 +158,23 @@ class DepthNerfactoModel(NerfactoModel):
         metrics["depth_abs_rel"] = float(
             torch.mean(torch.abs(outputs["depth"][depth_mask] - ground_truth_depth[depth_mask]) / ground_truth_depth[depth_mask]).cpu()
         )
+        # metrics["depth_rms"] = float(
+        #     torch.sqrt(torch.sum((outputs["depth"][depth_mask] - ground_truth_depth[depth_mask])**2)).cpu() / num_elements 
+        # )
         metrics["depth_rms"] = float(
-            torch.sqrt(torch.sum((outputs["depth"][depth_mask] - ground_truth_depth[depth_mask])**2)).cpu() / num_elements 
+            torch.sqrt(torch.sum((outputs["depth"][depth_mask] - ground_truth_depth[depth_mask])**2) / num_elements).cpu()
         )
+        # metrics["depth_rms_log"] = float(
+        #     torch.sqrt(torch.sum(log_diff**2)).cpu() / num_elements
+        # )
         metrics["depth_rms_log"] = float(
-            torch.sqrt(torch.sum(log_diff**2)).cpu() / num_elements
+            torch.sqrt(torch.sum(log_diff**2) / num_elements).cpu()
         )
+
+        thresh = torch.maximum((ground_truth_depth[depth_mask] / outputs["depth"][depth_mask]), (outputs["depth"][depth_mask] / ground_truth_depth[depth_mask])).cpu()
+        metrics["a1"] = np.mean(np.where((thresh < 1.25), 1, 0))
+        metrics["a2"] = np.mean(np.where((thresh < 1.25**2), 1, 0))
+        metrics["a3"] = np.mean(np.where((thresh < 1.25**3), 1, 0))
         return metrics, images
 
     def _get_sigma(self):
