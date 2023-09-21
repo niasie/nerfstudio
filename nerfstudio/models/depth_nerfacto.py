@@ -175,6 +175,9 @@ class DepthNerfactoModel(NerfactoModel):
         metrics["a1"] = np.mean(np.where((thresh < 1.25), 1, 0))
         metrics["a2"] = np.mean(np.where((thresh < 1.25**2), 1, 0))
         metrics["a3"] = np.mean(np.where((thresh < 1.25**3), 1, 0))
+
+        metrics["rgb_depth_tradeoff"] = np.sqrt(metrics["depth_abs_rel"]**2 + metrics["lpips"]**2)
+
         return metrics, images
 
     def _get_sigma(self):
