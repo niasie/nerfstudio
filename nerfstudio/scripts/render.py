@@ -549,7 +549,7 @@ class RenderInterpolated(BaseRender):
     """Whether to order camera poses by proximity."""
     frame_rate: int = 24
     """Frame rate of the output video."""
-    output_format: Literal["images", "video", "numpy"] = "video"
+    output_format: Literal["images", "video", "numpy", "raw-separate"] = "video"
     """How to save output data."""
 
     def main(self) -> None:
