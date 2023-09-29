@@ -173,7 +173,7 @@ def get_interpolated_poses(pose_a: NDArray, pose_b: NDArray, steps: int = 10) ->
     quat_a = quaternion_from_matrix(pose_a[:3, :3])
     quat_b = quaternion_from_matrix(pose_b[:3, :3])
 
-    ts = np.linspace(0, 1, steps)
+    ts = np.linspace(0, 1, steps) if steps > 1 else np.array([0.5])
     quats = [quaternion_slerp(quat_a, quat_b, t) for t in ts]
     trans = [(1 - t) * pose_a[:3, 3] + t * pose_b[:3, 3] for t in ts]
 
@@ -200,7 +200,7 @@ def get_interpolated_k(
         List of interpolated camera poses
     """
     Ks: List[Float[Tensor, "3 3"]] = []
-    ts = np.linspace(0, 1, steps)
+    ts = np.linspace(0, 1, steps) if steps > 1 else np.array([0.5])
     for t in ts:
         new_k = k_a * (1.0 - t) + k_b * t
         Ks.append(new_k)
