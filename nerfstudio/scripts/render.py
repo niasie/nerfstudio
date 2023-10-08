@@ -553,6 +553,7 @@ class RenderInterpolated(BaseRender):
     """How to save output data."""
     save_poses: bool = True
     """Whether to save poses used for rendering."""
+    do_render: bool = True
 
     def main(self) -> None:
         """Main function."""
@@ -580,24 +581,27 @@ class RenderInterpolated(BaseRender):
 
         if self.save_poses:
             self.output_path.mkdir(parents=True, exist_ok=True)
-            with open(self.output_path / Path("cam_poses.csv"), 'w') as fp:
-                cam = camera_path.camera_to_worlds.cpu().numpy()
-                fp.write("%s\n" % cam)
+            # save as json with 
+            cam = camera_path.camera_to_worlds.cpu().numpy().tolist()
+            cam_json = json.dumps(cam)
+            with open(self.output_path / Path("cam_poses.json"), 'w') as json_file:
+                json_file.write(cam_json)
 
 
-        _render_trajectory_video(
-            pipeline,
-            camera_path,
-            output_filename=self.output_path,
-            rendered_output_names=self.rendered_output_names,
-            rendered_resolution_scaling_factor=1.0 / self.downscale_factor,
-            seconds=seconds,
-            output_format=self.output_format,
-            image_format=self.image_format,
-            depth_near_plane=self.depth_near_plane,
-            depth_far_plane=self.depth_far_plane,
-            colormap_options=self.colormap_options,
-        )
+        if self.do_render:
+            _render_trajectory_video(
+                pipeline,
+                camera_path,
+                output_filename=self.output_path,
+                rendered_output_names=self.rendered_output_names,
+                rendered_resolution_scaling_factor=1.0 / self.downscale_factor,
+                seconds=seconds,
+                output_format=self.output_format,
+                image_format=self.image_format,
+                depth_near_plane=self.depth_near_plane,
+                depth_far_plane=self.depth_far_plane,
+                colormap_options=self.colormap_options,
+            )
 
 @dataclass
 class RenderAngled(BaseRender):
@@ -613,6 +617,7 @@ class RenderAngled(BaseRender):
     """How to save output data."""
     save_poses: bool = True
     """Whether to save poses used for rendering."""
+    do_render: bool = True
 
     def main(self) -> None:
         """Main function."""
@@ -639,29 +644,25 @@ class RenderAngled(BaseRender):
 
         if self.save_poses:
             self.output_path.mkdir(parents=True, exist_ok=True)
-            with open(self.output_path / Path("cam_poses.csv"), 'w') as fp:
-                cam = camera_path.camera_to_worlds.cpu().numpy()
-                fp.write("%s\n" % cam)
+            cam = camera_path.camera_to_worlds.cpu().numpy().tolist()
+            cam_json = json.dumps(cam)
+            with open(self.output_path / Path("cam_poses.json"), 'w') as json_file:
+                json_file.write(cam_json)
 
-        if self.save_poses:
-            os.mkdir(self.output_path)
-            with open(self.output_path / Path("cam_poses.csv"), 'w') as fp:
-                cam = camera_path.camera_to_worlds.cpu().numpy()
-                fp.write("%s\n" % cam)
-
-        _render_trajectory_video(
-            pipeline,
-            camera_path,
-            output_filename=self.output_path,
-            rendered_output_names=self.rendered_output_names,
-            rendered_resolution_scaling_factor=1.0 / self.downscale_factor,
-            seconds=seconds,
-            output_format=self.output_format,
-            image_format=self.image_format,
-            depth_near_plane=self.depth_near_plane,
-            depth_far_plane=self.depth_far_plane,
-            colormap_options=self.colormap_options,
-        )
+        if self.do_render:
+            _render_trajectory_video(
+                pipeline,
+                camera_path,
+                output_filename=self.output_path,
+                rendered_output_names=self.rendered_output_names,
+                rendered_resolution_scaling_factor=1.0 / self.downscale_factor,
+                seconds=seconds,
+                output_format=self.output_format,
+                image_format=self.image_format,
+                depth_near_plane=self.depth_near_plane,
+                depth_far_plane=self.depth_far_plane,
+                colormap_options=self.colormap_options,
+            )
 
 @dataclass
 class SpiralRender(BaseRender):
@@ -695,9 +696,11 @@ class SpiralRender(BaseRender):
 
         if self.save_poses:
             self.output_path.mkdir(parents=True, exist_ok=True)
-            with open(self.output_path / Path("cam_poses.csv"), 'w') as fp:
-                cam = camera_path.camera_to_worlds.cpu().numpy()
-                fp.write("%s\n" % cam)
+            # save as json with 
+            cam = camera_path.camera_to_worlds.cpu().numpy().tolist()
+            cam_json = json.dumps(cam)
+            with open(self.output_path / Path("cam_poses.json"), 'w') as json_file:
+                json_file.write(cam_json)
 
         _render_trajectory_video(
             pipeline,
