@@ -551,6 +551,8 @@ class RenderInterpolated(BaseRender):
     """Frame rate of the output video."""
     output_format: Literal["images", "video", "numpy", "raw-separate"] = "video"
     """How to save output data."""
+    save_poses: bool = True
+    """Whether to save poses used for rendering."""
 
     def main(self) -> None:
         """Main function."""
@@ -575,6 +577,13 @@ class RenderInterpolated(BaseRender):
             steps=self.interpolation_steps,
             order_poses=self.order_poses,
         )
+
+        if self.save_poses:
+            self.output_path.mkdir(parents=True, exist_ok=True)
+            with open(self.output_path / Path("cam_poses.csv"), 'w') as fp:
+                cam = camera_path.camera_to_worlds.cpu().numpy()
+                fp.write("%s\n" % cam)
+
 
         _render_trajectory_video(
             pipeline,
@@ -602,6 +611,8 @@ class RenderAngled(BaseRender):
     """Frame rate of the output video."""
     output_format: Literal["images", "video", "numpy", "raw-separate"] = "video"
     """How to save output data."""
+    save_poses: bool = True
+    """Whether to save poses used for rendering."""
 
     def main(self) -> None:
         """Main function."""
@@ -625,6 +636,18 @@ class RenderAngled(BaseRender):
             cameras=cameras,
             angle=self.angle
         )
+
+        if self.save_poses:
+            self.output_path.mkdir(parents=True, exist_ok=True)
+            with open(self.output_path / Path("cam_poses.csv"), 'w') as fp:
+                cam = camera_path.camera_to_worlds.cpu().numpy()
+                fp.write("%s\n" % cam)
+
+        if self.save_poses:
+            os.mkdir(self.output_path)
+            with open(self.output_path / Path("cam_poses.csv"), 'w') as fp:
+                cam = camera_path.camera_to_worlds.cpu().numpy()
+                fp.write("%s\n" % cam)
 
         _render_trajectory_video(
             pipeline,
@@ -652,6 +675,8 @@ class SpiralRender(BaseRender):
     """Frame rate of the output video (only for interpolate trajectory)."""
     radius: float = 0.1
     """Radius of the spiral."""
+    save_poses: bool = True
+    """Whether to save poses used for rendering."""
 
     def main(self) -> None:
         """Main function."""
@@ -667,6 +692,12 @@ class SpiralRender(BaseRender):
         steps = int(self.frame_rate * self.seconds)
         camera_start = pipeline.datamanager.eval_dataloader.get_camera(image_idx=0).flatten()
         camera_path = get_spiral_path(camera_start, steps=steps, radius=self.radius)
+
+        if self.save_poses:
+            self.output_path.mkdir(parents=True, exist_ok=True)
+            with open(self.output_path / Path("cam_poses.csv"), 'w') as fp:
+                cam = camera_path.camera_to_worlds.cpu().numpy()
+                fp.write("%s\n" % cam)
 
         _render_trajectory_video(
             pipeline,
