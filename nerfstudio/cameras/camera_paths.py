@@ -22,7 +22,7 @@ import torch
 
 import nerfstudio.utils.poses as pose_utils
 from nerfstudio.cameras import camera_utils
-from nerfstudio.cameras.camera_utils import get_interpolated_poses_many, get_angled_poses
+from nerfstudio.cameras.camera_utils import get_interpolated_poses_many, get_angled_poses, get_disturbed_poses
 from nerfstudio.cameras.cameras import Cameras, CameraType
 from nerfstudio.viewer.server.utils import three_js_perspective_camera_focal_length
 
@@ -63,6 +63,32 @@ def get_angled_camera_path(cameras: Cameras, angle: float) -> Cameras:
     Ks = cameras.get_intrinsics_matrices()
     poses = cameras.camera_to_worlds
     poses, Ks = get_angled_poses(poses, Ks, angle=angle)
+
+    cameras = Cameras(
+        fx=Ks[:, 0, 0],
+        fy=Ks[:, 1, 1],
+        cx=Ks[0, 0, 2],
+        cy=Ks[0, 1, 2],
+        camera_type=cameras.camera_type[0],
+        camera_to_worlds=poses,
+        width=cameras.width,
+        height=cameras.height
+    )
+    return cameras
+
+def get_disturbed_camera_path(cameras: Cameras, disturb_translation: float, disturb_rotation: float) -> Cameras:
+    """Generate a camera path with random disturbances of cameras
+
+    Args:
+        disturb_translation: Translation factor by which to maximally disturb the dataset view by
+        disturb_rotation: Angle by which to maximally disturb the dataset view by
+
+    Returns:
+        A new set of cameras along a path.
+    """
+    Ks = cameras.get_intrinsics_matrices()
+    poses = cameras.camera_to_worlds
+    poses, Ks = get_disturbed_poses(poses, Ks, disturb_translation=disturb_translation, disturb_rotation=disturb_rotation)
 
     cameras = Cameras(
         fx=Ks[:, 0, 0],

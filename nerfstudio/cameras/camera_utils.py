@@ -318,6 +318,86 @@ def get_angled_poses(
 
     return torch.tensor(traj, dtype=torch.float32), torch.tensor(k, dtype=torch.float32)
 
+def get_disturbed_poses(
+    poses: Float[Tensor, "num_poses 3 4"],
+    Ks: Float[Tensor, "num_poses 3 3"],
+    disturb_translation: float = 0.,
+    disturb_rotation: float = 0.,
+) -> Tuple[Float[Tensor, "num_poses 3 4"], Float[Tensor, "num_poses 3 3"]]:
+    """Return disturbed poses for given camera poses.
+
+    Args:
+        poses: list of camera poses
+        Ks: list of camera intrinsics
+        disturb_translation: Translation factor by which to maximally disturb the dataset view by
+        disturb_rotation: Angle by which to maximally disturb the dataset view by
+
+    Returns:
+        tuple of new poses and intrinsics
+    """
+    traj = []
+    k = []
+
+  
+    max_angle = disturb_rotation * np.pi / 180
+
+    # Find out what the average distance between camera viewpoints is (Only in x and y)
+    inter_pose_distances = []
+    for idx in range(poses.shape[0]-1):
+        pose_now = poses[idx].cpu().numpy()
+        pose_next = poses[idx+1].cpu().numpy()
+        distance = np.linalg.norm(pose_next[:,0:2] - pose_now[:,0:2])
+        inter_pose_distances.append(distance)
+    
+    avg_pose_distance = sum(inter_pose_distances) / len(inter_pose_distances)
+
+    # Scale this by the wanted factor
+    max_pose_translation = disturb_translation * avg_pose_distance
+    
+    
+    for idx in range(poses.shape[0]):
+
+        # Now randomly determine around which axis to rotate and by how much
+        axis_distribution = np.random.uniform(0,1)
+        angle = np.random.uniform(-max_angle, max_angle)
+
+        if (axis_distribution < 0.33):
+            #Rotation around z
+            rotmat = np.array(              [[np.cos(angle), -np.sin(angle), 0],
+                                            [np.sin(angle), np.cos(angle), 0],
+                                            [0, 0, 1]])
+        elif (axis_distribution < 0.66):
+            #Rotation around y
+            rotmat = np.array(              [[np.cos(angle), 0, np.sin(angle)],
+                                            [0, 1, 0],
+                                            [-np.sin(angle), 0, np.cos(angle)]])
+        else:
+            #Rotation around x
+            rotmat = np.array(              [[1, 0, 0],
+                                            [0, np.cos(angle), -np.sin(angle)],
+                                            [0, np.sin(angle), np.cos(angle)]])
+            
+        # Now randomly determine what axis to translate and by how much
+        axis_distribution = np.random.uniform(0,1)
+        translation = np.random.uniform(-max_pose_translation, max_pose_translation)
+
+        if (axis_distribution < 0.5):
+            translation_vec = np.array([translation, 0, 0])
+        else:
+            translation_vec = np.array([0, translation, 0])
+
+        
+        pose = poses[idx].cpu().numpy()
+        pose[:, :3] = rotmat @ pose[:, :3]
+        pose[:,3] += translation_vec
+        
+        traj.append(pose)
+        k.append(Ks[idx])
+
+    traj = np.stack(traj, axis=0)
+    k = torch.stack(k, dim=0)
+
+    return torch.tensor(traj, dtype=torch.float32), torch.tensor(k, dtype=torch.float32)
 
 def normalize(x: torch.Tensor) -> Float[Tensor, "*batch"]:
     """Returns a normalized vector."""

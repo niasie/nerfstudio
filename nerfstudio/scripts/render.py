@@ -53,6 +53,7 @@ from nerfstudio.cameras.camera_paths import (
     get_interpolated_camera_path,
     get_path_from_json,
     get_spiral_path,
+    get_disturbed_camera_path,
 )
 from nerfstudio.cameras.cameras import Cameras, CameraType
 from nerfstudio.data.datamanagers.base_datamanager import VanillaDataManager
@@ -665,6 +666,70 @@ class RenderAngled(BaseRender):
             )
 
 @dataclass
+class RenderDisturbed(BaseRender):
+    """Render a trajectory with random disturbances of the original poses."""
+
+    pose_source: Literal["eval", "train"] = "eval"
+    """Pose source to render."""
+    disturb_translation: float = 20.0
+    """Translation factor by which to maximally disturb the dataset view by."""
+    disturb_rotation: float = 3.0
+    """Angle by which to maximally disturb the dataset view by. (deg)"""
+    frame_rate: int = 24
+    """Frame rate of the output video."""
+    output_format: Literal["images", "video", "numpy", "raw-separate"] = "video"
+    """How to save output data."""
+    save_poses: bool = True
+    """Whether to save poses used for rendering."""
+    do_render: bool = True
+
+    def main(self) -> None:
+        """Main function."""
+        _, pipeline, _, _ = eval_setup(
+            self.load_config,
+            eval_num_rays_per_chunk=self.eval_num_rays_per_chunk,
+            test_mode="test",
+        )
+
+        install_checks.check_ffmpeg_installed()
+
+        if self.pose_source == "eval":
+            assert pipeline.datamanager.eval_dataset is not None
+            cameras = pipeline.datamanager.eval_dataset.cameras
+        else:
+            assert pipeline.datamanager.train_dataset is not None
+            cameras = pipeline.datamanager.train_dataset.cameras
+
+        seconds = len(cameras) / self.frame_rate
+        camera_path = get_disturbed_camera_path(
+            cameras=cameras,
+            disturb_translation=self.disturb_translation,
+            disturb_rotation=self.disturb_rotation
+        )
+
+        if self.save_poses:
+            self.output_path.mkdir(parents=True, exist_ok=True)
+            cam = camera_path.camera_to_worlds.cpu().numpy().tolist()
+            cam_json = json.dumps(cam)
+            with open(self.output_path / Path("cam_poses.json"), 'w') as json_file:
+                json_file.write(cam_json)
+
+        if self.do_render:
+            _render_trajectory_video(
+                pipeline,
+                camera_path,
+                output_filename=self.output_path,
+                rendered_output_names=self.rendered_output_names,
+                rendered_resolution_scaling_factor=1.0 / self.downscale_factor,
+                seconds=seconds,
+                output_format=self.output_format,
+                image_format=self.image_format,
+                depth_near_plane=self.depth_near_plane,
+                depth_far_plane=self.depth_far_plane,
+                colormap_options=self.colormap_options,
+            )
+
+@dataclass
 class SpiralRender(BaseRender):
     """Render a spiral trajectory (often not great)."""
 
@@ -723,6 +788,7 @@ Commands = tyro.conf.FlagConversionOff[
         Annotated[RenderAngled, tyro.conf.subcommand(name="angled")],
         Annotated[RenderInterpolated, tyro.conf.subcommand(name="interpolate")],
         Annotated[SpiralRender, tyro.conf.subcommand(name="spiral")],
+        Annotated[RenderDisturbed, tyro.conf.subcommand(name="disturbed")],
     ]
 ]
 
