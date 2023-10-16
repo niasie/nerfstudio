@@ -63,6 +63,7 @@ from nerfstudio.utils import colormaps, install_checks
 from nerfstudio.utils.eval_utils import eval_setup
 from nerfstudio.utils.rich_utils import CONSOLE, ItersPerSecColumn
 from nerfstudio.utils.scripts import run_command
+from nerfstudio.data.dataparsers.base_dataparser import transform_poses_to_original_space as trafo
 
 import matplotlib.pyplot as plt
 
@@ -581,9 +582,10 @@ class RenderInterpolated(BaseRender):
 
         if self.save_poses:
             self.output_path.mkdir(parents=True, exist_ok=True)
-            # save as json with 
-            cam = camera_path.camera_to_worlds.cpu().numpy().tolist()
-            cam_json = json.dumps(cam)
+            parser = pipeline.datamanager.train_dataparser_outputs
+            trafoed_outs = trafo(camera_path.camera_to_worlds.cpu(), parser.dataparser_transform, parser.dataparser_scale, camera_convention="opencv")
+            cam_json = json.dumps(trafoed_outs.numpy().tolist())
+            # camera_path.cx[0,0] ...
             with open(self.output_path / Path("cam_poses.json"), 'w') as json_file:
                 json_file.write(cam_json)
 
@@ -644,8 +646,10 @@ class RenderAngled(BaseRender):
 
         if self.save_poses:
             self.output_path.mkdir(parents=True, exist_ok=True)
-            cam = camera_path.camera_to_worlds.cpu().numpy().tolist()
-            cam_json = json.dumps(cam)
+            parser = pipeline.datamanager.train_dataparser_outputs
+            trafoed_outs = trafo(camera_path.camera_to_worlds.cpu(), parser.dataparser_transform, parser.dataparser_scale, camera_convention="opencv")
+            cam_json = json.dumps(trafoed_outs.numpy().tolist())
+            # camera_path.cx[0,0] ...
             with open(self.output_path / Path("cam_poses.json"), 'w') as json_file:
                 json_file.write(cam_json)
 
@@ -696,9 +700,10 @@ class SpiralRender(BaseRender):
 
         if self.save_poses:
             self.output_path.mkdir(parents=True, exist_ok=True)
-            # save as json with 
-            cam = camera_path.camera_to_worlds.cpu().numpy().tolist()
-            cam_json = json.dumps(cam)
+            parser = pipeline.datamanager.train_dataparser_outputs
+            trafoed_outs = trafo(camera_path.camera_to_worlds.cpu(), parser.dataparser_transform, parser.dataparser_scale, camera_convention="opencv")
+            cam_json = json.dumps(trafoed_outs.numpy().tolist())
+            # camera_path.cx[0,0] ...
             with open(self.output_path / Path("cam_poses.json"), 'w') as json_file:
                 json_file.write(cam_json)
 
