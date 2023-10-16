@@ -76,19 +76,38 @@ def get_angled_camera_path(cameras: Cameras, angle: float) -> Cameras:
     )
     return cameras
 
-def get_disturbed_camera_path(cameras: Cameras, disturb_translation: float, disturb_rotation: float) -> Cameras:
+def get_disturbed_camera_path(  cameras: Cameras, 
+                                disturb_translation: float, 
+                                disturb_rotation: float,
+                                data_multiplier: int,
+    ) -> Cameras:
     """Generate a camera path with random disturbances of cameras
 
     Args:
         disturb_translation: Translation factor by which to maximally disturb the dataset view by
         disturb_rotation: Angle by which to maximally disturb the dataset view by
+        data_multiplier: How many times original source is used as disturbance seed
 
     Returns:
         A new set of cameras along a path.
     """
+
+    assert data_multiplier > 0
+    assert isinstance(data_multiplier, int)
+    
     Ks = cameras.get_intrinsics_matrices()
     poses = cameras.camera_to_worlds
-    poses, Ks = get_disturbed_poses(poses, Ks, disturb_translation=disturb_translation, disturb_rotation=disturb_rotation)
+    poses, Ks = get_disturbed_poses(poses, 
+                                    Ks, 
+                                    disturb_translation=disturb_translation, 
+                                    disturb_rotation=disturb_rotation,
+                                    data_multiplier=data_multiplier
+                                    )
+
+
+
+    width = cameras.width.repeat(data_multiplier, 1)
+    height = cameras.height.repeat(data_multiplier, 1)
 
     cameras = Cameras(
         fx=Ks[:, 0, 0],
@@ -97,8 +116,8 @@ def get_disturbed_camera_path(cameras: Cameras, disturb_translation: float, dist
         cy=Ks[0, 1, 2],
         camera_type=cameras.camera_type[0],
         camera_to_worlds=poses,
-        width=cameras.width,
-        height=cameras.height
+        width=width,
+        height=height
     )
     return cameras
 

@@ -675,6 +675,8 @@ class RenderDisturbed(BaseRender):
     """Translation factor by which to maximally disturb the dataset view by."""
     disturb_rotation: float = 3.0
     """Angle by which to maximally disturb the dataset view by. (deg)"""
+    data_multiplier: int = 3
+    """How many times original source is used as disturbance seed."""
     frame_rate: int = 24
     """Frame rate of the output video."""
     output_format: Literal["images", "video", "numpy", "raw-separate"] = "video"
@@ -704,7 +706,8 @@ class RenderDisturbed(BaseRender):
         camera_path = get_disturbed_camera_path(
             cameras=cameras,
             disturb_translation=self.disturb_translation,
-            disturb_rotation=self.disturb_rotation
+            disturb_rotation=self.disturb_rotation,
+            data_multiplier=self.data_multiplier,
         )
 
         if self.save_poses:
