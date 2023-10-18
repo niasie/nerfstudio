@@ -321,8 +321,8 @@ def get_angled_poses(
 def get_disturbed_poses(
     poses: Float[Tensor, "num_poses 3 4"],
     Ks: Float[Tensor, "num_poses 3 3"],
-    disturb_translation: float = 0.,
-    disturb_rotation: float = 0.,
+    disturb_translation: Tuple[float, float, float] = (0.0, 0.0, 0.0),
+    disturb_rotation: Tuple[float, float, float] = (0.0, 0.0, 0.0),
     data_multiplier: int = 1
 ) -> Tuple[Float[Tensor, "num_poses 3 4"], Float[Tensor, "num_poses 3 3"]]:
     """Return disturbed poses for given camera poses.
@@ -330,8 +330,8 @@ def get_disturbed_poses(
     Args:
         poses: list of camera poses
         Ks: list of camera intrinsics
-        disturb_translation: Translation factor by which to maximally disturb the dataset view by
-        disturb_rotation: Angle by which to maximally disturb the dataset view by
+        disturb_translation: Translation factor (x,y,z) by which to maximally disturb the dataset view by
+        disturb_rotation: Angle (x,y,z) [degrees] by which to maximally disturb the dataset view by
         data_multiplier: How many times original source is used as disturbance seed
 
     Returns:
@@ -340,20 +340,31 @@ def get_disturbed_poses(
     traj = []
     k = []
 
-    max_angle = disturb_rotation * np.pi / 180
+    max_angle_x = disturb_rotation[0] * np.pi / 180
+    max_angle_y = disturb_rotation[1] * np.pi / 180
+    max_angle_z = disturb_rotation[2] * np.pi / 180
 
-    # Find out what the average distance between camera viewpoints is (Only in x and y)
-    inter_pose_distances = []
+    # Find out what the average distance between camera viewpoints is x & y coupled, z indepedent
+    inter_pose_distances_xy = []
+    inter_pose_distances_z = []
+
     for idx in range(poses.shape[0]-1):
         pose_now = poses[idx].cpu().numpy()
         pose_next = poses[idx+1].cpu().numpy()
-        distance = np.linalg.norm(pose_next[:,0:2] - pose_now[:,0:2])
-        inter_pose_distances.append(distance)
+
+        distance_xy = np.linalg.norm(pose_next[:,0:2] - pose_now[:,0:2])
+        distance_z = np.linalg.norm(pose_next[:,2] - pose_now[:,2])
+
+        inter_pose_distances_xy.append(distance_xy)
+        inter_pose_distances_z.append(distance_z)
     
-    avg_pose_distance = sum(inter_pose_distances) / len(inter_pose_distances)
+    avg_pose_distance_xy = sum(inter_pose_distances_xy) / len(inter_pose_distances_xy)
+    avg_pose_distance_z = sum(inter_pose_distances_z) / len(inter_pose_distances_z)
 
     # Scale this by the wanted factor
-    max_pose_translation = disturb_translation * avg_pose_distance
+    max_pose_translation_x = disturb_translation[0] * avg_pose_distance_xy
+    max_pose_translation_y = disturb_translation[1] * avg_pose_distance_xy
+    max_pose_translation_z = disturb_translation[2] * avg_pose_distance_z
     
     # Loop over all poses
     for idx in range(poses.shape[0]):
@@ -362,35 +373,36 @@ def get_disturbed_poses(
         for _ in range(data_multiplier):
 
             # Now randomly determine around which axis to rotate and by how much
-            axis_distribution = np.random.uniform(0,1)
-            angle = np.random.uniform(-max_angle, max_angle)
+            angle_x = np.random.uniform(-max_angle_x, max_angle_x)
+            angle_y = np.random.uniform(-max_angle_y, max_angle_y)
+            angle_z = np.random.uniform(-max_angle_z, max_angle_z)
 
-            if (axis_distribution < 0.33):
-                #Rotation around z
-                rotmat = np.array(              [[np.cos(angle), -np.sin(angle), 0],
-                                                [np.sin(angle), np.cos(angle), 0],
-                                                [0, 0, 1]])
-            elif (axis_distribution < 0.66):
-                #Rotation around y
-                rotmat = np.array(              [[np.cos(angle), 0, np.sin(angle)],
-                                                [0, 1, 0],
-                                                [-np.sin(angle), 0, np.cos(angle)]])
-            else:
-                #Rotation around x
-                rotmat = np.array(              [[1, 0, 0],
-                                                [0, np.cos(angle), -np.sin(angle)],
-                                                [0, np.sin(angle), np.cos(angle)]])
-                
-            # Now randomly determine what axis to translate and by how much
-            axis_distribution = np.random.uniform(0,1)
-            translation = np.random.uniform(-max_pose_translation, max_pose_translation)
-
-            if (axis_distribution < 0.5):
-                translation_vec = np.array([translation, 0, 0])
-            else:
-                translation_vec = np.array([0, translation, 0])
-
+            rotmat_x = np.array(    [[1, 0, 0],
+                                    [0, np.cos(angle_x), -np.sin(angle_x)],
+                                    [0, np.sin(angle_x), np.cos(angle_x)]])
             
+            rotmat_y = np.array(    [[np.cos(angle_y), 0, np.sin(angle_y)],
+                                    [0, 1, 0],
+                                    [-np.sin(angle_y), 0, np.cos(angle_y)]])
+            
+            rotmat_z = np.array(    [[np.cos(angle_z), -np.sin(angle_z), 0],
+                                    [np.sin(angle_z), np.cos(angle_z), 0],
+                                    [0, 0, 1]])
+            
+            rotmat = rotmat_x @ rotmat_y @ rotmat_z
+            
+
+            # Now randomly determine how much to translate
+            translation_x = np.random.uniform(-max_pose_translation_x, max_pose_translation_x)
+            translation_y = np.random.uniform(-max_pose_translation_y, max_pose_translation_y)
+            translation_z = np.random.uniform(-max_pose_translation_z, max_pose_translation_z)
+
+            translation_vec_x = np.array([translation_x, 0, 0])
+            translation_vec_y = np.array([0, translation_y, 0])
+            translation_vec_z = np.array([0, 0, translation_z])
+
+            translation_vec = translation_vec_x + translation_vec_y + translation_vec_z
+
             pose = poses[idx].cpu().numpy()
             pose[:, :3] = rotmat @ pose[:, :3]
             pose[:,3] += translation_vec

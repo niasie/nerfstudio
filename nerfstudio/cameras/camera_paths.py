@@ -77,15 +77,15 @@ def get_angled_camera_path(cameras: Cameras, angle: float) -> Cameras:
     return cameras
 
 def get_disturbed_camera_path(  cameras: Cameras, 
-                                disturb_translation: float, 
-                                disturb_rotation: float,
+                                disturb_translation: Tuple[float, float, float], 
+                                disturb_rotation: Tuple[float, float, float],
                                 data_multiplier: int,
     ) -> Cameras:
     """Generate a camera path with random disturbances of cameras
 
     Args:
-        disturb_translation: Translation factor by which to maximally disturb the dataset view by
-        disturb_rotation: Angle by which to maximally disturb the dataset view by
+        disturb_translation: Translation factor (x,y,z) by which to maximally disturb the dataset view by
+        disturb_rotation: Angle (x,y,z) [degrees] by which to maximally disturb the dataset view by
         data_multiplier: How many times original source is used as disturbance seed
 
     Returns:

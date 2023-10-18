@@ -26,7 +26,7 @@ import sys
 from contextlib import ExitStack
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union, Tuple
 
 import mediapy as media
 import numpy as np
@@ -669,12 +669,15 @@ class RenderAngled(BaseRender):
 class RenderDisturbed(BaseRender):
     """Render a trajectory with random disturbances of the original poses."""
 
+    """Todo:    For rotation: list with axis and then list with angles
+                For Translation: list with axis and then list with translation factors """
+
     pose_source: Literal["eval", "train"] = "eval"
     """Pose source to render."""
-    disturb_translation: float = 20.0
-    """Translation factor by which to maximally disturb the dataset view by."""
-    disturb_rotation: float = 3.0
-    """Angle by which to maximally disturb the dataset view by. (deg)"""
+    disturb_translation: Tuple[float, float, float] = (20.0, 20.0, 0.0)
+    """Translation factor (x,y,z) by which to maximally disturb the dataset view by."""
+    disturb_rotation: Tuple[float, float, float] = (3.0, 3.0, 3.0)
+    """Angle (x,y,z) [degrees] by which to maximally disturb the dataset view by."""
     data_multiplier: int = 3
     """How many times original source is used as disturbance seed."""
     frame_rate: int = 24
