@@ -206,6 +206,19 @@ def get_interpolated_k(
         Ks.append(new_k)
     return Ks
 
+def get_interpolated_times(
+    time_a: Float, time_b: Float, steps: int = 10
+) -> List:
+    """
+    
+    """
+    times = []
+    ts = np.linspace(0, 1, steps) if steps > 1 else np.array([0.5])
+    for t in ts:
+        new_time = time_a * (1.0 - t) + time_b * t
+        times.append(new_time)
+    return times
+
 
 def get_ordered_poses_and_k(
     poses: Float[Tensor, "num_poses 3 4"],
@@ -246,6 +259,7 @@ def get_ordered_poses_and_k(
 def get_interpolated_poses_many(
     poses: Float[Tensor, "num_poses 3 4"],
     Ks: Float[Tensor, "num_poses 3 3"],
+    times: Tensor,
     steps_per_transition: int = 10,
     order_poses: bool = False,
 ) -> Tuple[Float[Tensor, "num_poses 3 4"], Float[Tensor, "num_poses 3 3"]]:
@@ -258,10 +272,11 @@ def get_interpolated_poses_many(
         order_poses: whether to order poses by euclidian distance
 
     Returns:
-        tuple of new poses and intrinsics
+        tuple of new poses, intrinsics and times
     """
     traj = []
     k_interp = []
+    times_interp = []
 
     if order_poses:
         poses, Ks = get_ordered_poses_and_k(poses, Ks)
@@ -273,10 +288,16 @@ def get_interpolated_poses_many(
         traj += poses_ab
         k_interp += get_interpolated_k(Ks[idx], Ks[idx + 1], steps=steps_per_transition)
 
+        time_a = times[idx].cpu().numpy()
+        time_b = times[idx + 1].cpu().numpy()
+        times_interp += get_interpolated_times(time_a, time_b, steps=steps_per_transition)
+
+
     traj = np.stack(traj, axis=0)
     k_interp = torch.stack(k_interp, dim=0)
+    times_interp = np.stack(times_interp, axis=0)
 
-    return torch.tensor(traj, dtype=torch.float32), torch.tensor(k_interp, dtype=torch.float32)
+    return torch.tensor(traj, dtype=torch.float32), torch.tensor(k_interp, dtype=torch.float32), torch.tensor(times_interp, dtype=torch.float32)
 
 def get_angled_poses(
     poses: Float[Tensor, "num_poses 3 4"],

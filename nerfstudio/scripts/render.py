@@ -117,7 +117,12 @@ def _render_trajectory_video(
     )
 
     DATAPARSER_SCALE = pipeline.datamanager.train_dataparser_outputs.dataparser_scale
-    DEPTH_UNIT_SCALE = pipeline.datamanager.dataparser_config.depth_unit_scale_factor
+
+    if hasattr(pipeline.datamanager.dataparser_config, 'depth_unit_scale_factor'):
+        DEPTH_UNIT_SCALE = pipeline.datamanager.dataparser_config.depth_unit_scale_factor
+    else:
+        DEPTH_UNIT_SCALE = 1.0
+        
 
     output_image_dir = output_filename.parent / output_filename.stem
     if output_format in ("images", "numpy", "raw-separate"):
@@ -581,7 +586,7 @@ class RenderInterpolated(BaseRender):
             order_poses=self.order_poses,
         )
 
-        if self.save_poses:
+        if self.save_poses and self.output_format != "video":
             self.output_path.mkdir(parents=True, exist_ok=True)
             parser = pipeline.datamanager.train_dataparser_outputs
             trafoed_outs = trafo(camera_path.camera_to_worlds.cpu(), parser.dataparser_transform, parser.dataparser_scale, camera_convention="opencv")
@@ -645,7 +650,7 @@ class RenderAngled(BaseRender):
             angle=self.angle
         )
 
-        if self.save_poses:
+        if self.save_poses and self.output_format != "video":
             self.output_path.mkdir(parents=True, exist_ok=True)
             parser = pipeline.datamanager.train_dataparser_outputs
             trafoed_outs = trafo(camera_path.camera_to_worlds.cpu(), parser.dataparser_transform, parser.dataparser_scale, camera_convention="opencv")
@@ -717,7 +722,7 @@ class RenderDisturbed(BaseRender):
             data_multiplier=self.data_multiplier,
         )
 
-        if self.save_poses:
+        if self.save_poses and self.output_format != "video":
             self.output_path.mkdir(parents=True, exist_ok=True)
             cam = camera_path.camera_to_worlds.cpu().numpy().tolist()
             cam_json = json.dumps(cam)
@@ -769,7 +774,7 @@ class SpiralRender(BaseRender):
         camera_start = pipeline.datamanager.eval_dataloader.get_camera(image_idx=0).flatten()
         camera_path = get_spiral_path(camera_start, steps=steps, radius=self.radius)
 
-        if self.save_poses:
+        if self.save_poses and self.output_format != "video":
             self.output_path.mkdir(parents=True, exist_ok=True)
             parser = pipeline.datamanager.train_dataparser_outputs
             trafoed_outs = trafo(camera_path.camera_to_worlds.cpu(), parser.dataparser_transform, parser.dataparser_scale, camera_convention="opencv")
