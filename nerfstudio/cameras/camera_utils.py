@@ -206,6 +206,19 @@ def get_interpolated_k(
         Ks.append(new_k)
     return Ks
 
+def get_interpolated_times(
+    time_a: Float, time_b: Float, steps: int = 10
+) -> List:
+    """
+    
+    """
+    times = []
+    ts = np.linspace(0, 1, steps) if steps > 1 else np.array([0.5])
+    for t in ts:
+        new_time = time_a * (1.0 - t) + time_b * t
+        times.append(new_time)
+    return times
+
 
 def get_ordered_poses_and_k(
     poses: Float[Tensor, "num_poses 3 4"],
@@ -246,6 +259,7 @@ def get_ordered_poses_and_k(
 def get_interpolated_poses_many(
     poses: Float[Tensor, "num_poses 3 4"],
     Ks: Float[Tensor, "num_poses 3 3"],
+    times: Tensor,
     steps_per_transition: int = 10,
     order_poses: bool = False,
 ) -> Tuple[Float[Tensor, "num_poses 3 4"], Float[Tensor, "num_poses 3 3"]]:
@@ -258,10 +272,11 @@ def get_interpolated_poses_many(
         order_poses: whether to order poses by euclidian distance
 
     Returns:
-        tuple of new poses and intrinsics
+        tuple of new poses, intrinsics and times
     """
     traj = []
     k_interp = []
+    times_interp = []
 
     if order_poses:
         poses, Ks = get_ordered_poses_and_k(poses, Ks)
@@ -273,10 +288,16 @@ def get_interpolated_poses_many(
         traj += poses_ab
         k_interp += get_interpolated_k(Ks[idx], Ks[idx + 1], steps=steps_per_transition)
 
+        time_a = times[idx].cpu().numpy()
+        time_b = times[idx + 1].cpu().numpy()
+        times_interp += get_interpolated_times(time_a, time_b, steps=steps_per_transition)
+
+
     traj = np.stack(traj, axis=0)
     k_interp = torch.stack(k_interp, dim=0)
+    times_interp = np.stack(times_interp, axis=0)
 
-    return torch.tensor(traj, dtype=torch.float32), torch.tensor(k_interp, dtype=torch.float32)
+    return torch.tensor(traj, dtype=torch.float32), torch.tensor(k_interp, dtype=torch.float32), torch.tensor(times_interp, dtype=torch.float32)
 
 def get_angled_poses(
     poses: Float[Tensor, "num_poses 3 4"],
@@ -318,6 +339,102 @@ def get_angled_poses(
 
     return torch.tensor(traj, dtype=torch.float32), torch.tensor(k, dtype=torch.float32)
 
+def get_disturbed_poses(
+    poses: Float[Tensor, "num_poses 3 4"],
+    Ks: Float[Tensor, "num_poses 3 3"],
+    disturb_translation: Tuple[float, float, float] = (0.0, 0.0, 0.0),
+    disturb_rotation: Tuple[float, float, float] = (0.0, 0.0, 0.0),
+    data_multiplier: int = 1
+) -> Tuple[Float[Tensor, "num_poses 3 4"], Float[Tensor, "num_poses 3 3"]]:
+    """Return disturbed poses for given camera poses.
+
+    Args:
+        poses: list of camera poses
+        Ks: list of camera intrinsics
+        disturb_translation: Translation factor (x,y,z) by which to maximally disturb the dataset view by
+        disturb_rotation: Angle (x,y,z) [degrees] by which to maximally disturb the dataset view by
+        data_multiplier: How many times original source is used as disturbance seed
+
+    Returns:
+        tuple of new poses and intrinsics
+    """
+    traj = []
+    k = []
+
+    max_angle_x = disturb_rotation[0] * np.pi / 180
+    max_angle_y = disturb_rotation[1] * np.pi / 180
+    max_angle_z = disturb_rotation[2] * np.pi / 180
+
+    # Find out what the average distance between camera viewpoints is x & y coupled, z indepedent
+    inter_pose_distances_xy = []
+    inter_pose_distances_z = []
+
+    for idx in range(poses.shape[0]-1):
+        pose_now = poses[idx].cpu().numpy()
+        pose_next = poses[idx+1].cpu().numpy()
+
+        distance_xy = np.linalg.norm(pose_next[:,0:2] - pose_now[:,0:2])
+        distance_z = np.linalg.norm(pose_next[:,2] - pose_now[:,2])
+
+        inter_pose_distances_xy.append(distance_xy)
+        inter_pose_distances_z.append(distance_z)
+    
+    avg_pose_distance_xy = sum(inter_pose_distances_xy) / len(inter_pose_distances_xy)
+    avg_pose_distance_z = sum(inter_pose_distances_z) / len(inter_pose_distances_z)
+
+    # Scale this by the wanted factor
+    max_pose_translation_x = disturb_translation[0] * avg_pose_distance_xy
+    max_pose_translation_y = disturb_translation[1] * avg_pose_distance_xy
+    max_pose_translation_z = disturb_translation[2] * avg_pose_distance_z
+    
+    # Loop over all poses
+    for idx in range(poses.shape[0]):
+
+        # Repeat data_multiplier times for each pose
+        for _ in range(data_multiplier):
+
+            # Now randomly determine around which axis to rotate and by how much
+            angle_x = np.random.uniform(-max_angle_x, max_angle_x)
+            angle_y = np.random.uniform(-max_angle_y, max_angle_y)
+            angle_z = np.random.uniform(-max_angle_z, max_angle_z)
+
+            rotmat_x = np.array(    [[1, 0, 0],
+                                    [0, np.cos(angle_x), -np.sin(angle_x)],
+                                    [0, np.sin(angle_x), np.cos(angle_x)]])
+            
+            rotmat_y = np.array(    [[np.cos(angle_y), 0, np.sin(angle_y)],
+                                    [0, 1, 0],
+                                    [-np.sin(angle_y), 0, np.cos(angle_y)]])
+            
+            rotmat_z = np.array(    [[np.cos(angle_z), -np.sin(angle_z), 0],
+                                    [np.sin(angle_z), np.cos(angle_z), 0],
+                                    [0, 0, 1]])
+            
+            rotmat = rotmat_x @ rotmat_y @ rotmat_z
+            
+
+            # Now randomly determine how much to translate
+            translation_x = np.random.uniform(-max_pose_translation_x, max_pose_translation_x)
+            translation_y = np.random.uniform(-max_pose_translation_y, max_pose_translation_y)
+            translation_z = np.random.uniform(-max_pose_translation_z, max_pose_translation_z)
+
+            translation_vec_x = np.array([translation_x, 0, 0])
+            translation_vec_y = np.array([0, translation_y, 0])
+            translation_vec_z = np.array([0, 0, translation_z])
+
+            translation_vec = translation_vec_x + translation_vec_y + translation_vec_z
+
+            pose = poses[idx].cpu().numpy()
+            pose[:, :3] = rotmat @ pose[:, :3]
+            pose[:,3] += translation_vec
+            
+            traj.append(pose)
+            k.append(Ks[idx])
+
+    traj = np.stack(traj, axis=0)
+    k = torch.stack(k, dim=0)
+
+    return torch.tensor(traj, dtype=torch.float32), torch.tensor(k, dtype=torch.float32)
 
 def normalize(x: torch.Tensor) -> Float[Tensor, "*batch"]:
     """Returns a normalized vector."""

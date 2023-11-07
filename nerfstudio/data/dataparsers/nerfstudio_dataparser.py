@@ -85,13 +85,21 @@ class Nerfstudio(DataParser):
     def _generate_dataparser_outputs(self, split="train"):
         assert self.config.data.exists(), f"Data directory {self.config.data} does not exist."
 
+        timestamps = None
         if self.config.data.suffix == ".json":
             meta = load_from_json(self.config.data)
+            timestamps_path = self.config.data.split('/')[0:-2] / "timestamps.json"
+            if timestamps_path.exists():
+                print("Timestamps found")
+                timestamps = load_from_json(self.config.data / "timestamps.json")
             data_dir = self.config.data.parent
         else:
             meta = load_from_json(self.config.data / "transforms.json")
+            if (self.config.data / "timestamps.json").exists():
+                print("Timestamps found")
+                timestamps = load_from_json(self.config.data / "timestamps.json")
             data_dir = self.config.data
-
+       
         image_filenames = []
         mask_filenames = []
         depth_filenames = []
@@ -285,6 +293,12 @@ class Nerfstudio(DataParser):
         else:
             distortion_params = torch.stack(distort, dim=0)[idx_tensor]
 
+        if timestamps is None:
+            timestamps = torch.zeros_like(torch.from_numpy(inds))
+        indices_take = torch.from_numpy(indices)
+        times_all = torch.asarray(timestamps)
+        times = torch.take(times_all, indices_take)
+
         cameras = Cameras(
             fx=fx,
             fy=fy,
@@ -295,6 +309,7 @@ class Nerfstudio(DataParser):
             width=width,
             camera_to_worlds=poses[:, :3, :4],
             camera_type=camera_type,
+            times=times
         )
 
         assert self.downscale_factor is not None
