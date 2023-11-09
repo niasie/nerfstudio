@@ -575,7 +575,8 @@ class RenderInterpolated(BaseRender):
             test_mode="test",
         )
 
-        install_checks.check_ffmpeg_installed()
+        if self.output_format == "video":
+            install_checks.check_ffmpeg_installed()
 
         if self.pose_source == "eval":
             assert pipeline.datamanager.eval_dataset is not None
@@ -641,7 +642,8 @@ class RenderAngled(BaseRender):
             test_mode="test",
         )
 
-        install_checks.check_ffmpeg_installed()
+        if self.output_format == "video":
+            install_checks.check_ffmpeg_installed()
 
         if self.pose_source == "eval":
             assert pipeline.datamanager.eval_dataset is not None
@@ -775,7 +777,8 @@ class SpiralRender(BaseRender):
             test_mode="test",
         )
 
-        install_checks.check_ffmpeg_installed()
+        if self.output_format == "video":
+            install_checks.check_ffmpeg_installed()
 
         assert isinstance(pipeline.datamanager, VanillaDataManager)
         steps = int(self.frame_rate * self.seconds)
