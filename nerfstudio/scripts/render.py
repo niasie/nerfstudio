@@ -83,6 +83,7 @@ def _render_trajectory_video(
     depth_near_plane: Optional[float] = None,
     depth_far_plane: Optional[float] = None,
     colormap_options: colormaps.ColormapOptions = colormaps.ColormapOptions(),
+    max_depth: float = 85.0
 ) -> None:
     """Helper function to create a video of the spiral trajectory.
 
@@ -179,7 +180,7 @@ def _render_trajectory_video(
                         elif output_format == "raw-separate":
                             output_image = np.squeeze(output_image.cpu().numpy()) * (1 / DEPTH_UNIT_SCALE) * (1 / DATAPARSER_SCALE)
 
-                            MAX_DEPTH = 85.0 / DEPTH_UNIT_SCALE
+                            MAX_DEPTH = max_depth / DEPTH_UNIT_SCALE
 
                             output_image = np.where(output_image < MAX_DEPTH, output_image, 0)
                             
@@ -400,6 +401,8 @@ class BaseRender:
     """Furthest depth to consider when using the colormap for depth. If None, use max value."""
     colormap_options: colormaps.ColormapOptions = colormaps.ColormapOptions()
     """Colormap options."""
+    max_depth : float = 85.0
+    """Furthest valid depth to render."""
 
 
 @dataclass
@@ -464,6 +467,7 @@ class RenderCameraPath(BaseRender):
             depth_near_plane=self.depth_near_plane,
             depth_far_plane=self.depth_far_plane,
             colormap_options=self.colormap_options,
+            max_depth=self.max_depth
         )
 
         if (
@@ -497,6 +501,7 @@ class RenderCameraPath(BaseRender):
                 depth_near_plane=self.depth_near_plane,
                 depth_far_plane=self.depth_far_plane,
                 colormap_options=self.colormap_options,
+                max_depth=self.max_depth
             )
 
             self.output_path = Path(str(left_eye_path.parent)[:-5] + ".mp4")
@@ -609,6 +614,7 @@ class RenderInterpolated(BaseRender):
                 depth_near_plane=self.depth_near_plane,
                 depth_far_plane=self.depth_far_plane,
                 colormap_options=self.colormap_options,
+                max_depth=self.max_depth
             )
 
 @dataclass
@@ -672,6 +678,7 @@ class RenderAngled(BaseRender):
                 depth_near_plane=self.depth_near_plane,
                 depth_far_plane=self.depth_far_plane,
                 colormap_options=self.colormap_options,
+                max_depth=self.max_depth
             )
 
 @dataclass
@@ -742,6 +749,7 @@ class RenderDisturbed(BaseRender):
                 depth_near_plane=self.depth_near_plane,
                 depth_far_plane=self.depth_far_plane,
                 colormap_options=self.colormap_options,
+                max_depth=self.max_depth
             )
 
 @dataclass
@@ -795,6 +803,7 @@ class SpiralRender(BaseRender):
             depth_near_plane=self.depth_near_plane,
             depth_far_plane=self.depth_far_plane,
             colormap_options=self.colormap_options,
+            max_depth=self.max_depth
         )
 
 
