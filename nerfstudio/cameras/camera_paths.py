@@ -40,6 +40,9 @@ def get_interpolated_camera_path(cameras: Cameras, steps: int, order_poses: bool
     Ks = cameras.get_intrinsics_matrices()
     poses = cameras.camera_to_worlds
     poses, Ks, times = get_interpolated_poses_many(poses, Ks, times=cameras.times, steps_per_transition=steps, order_poses=order_poses)
+
+    width = cameras.width[0].repeat(poses.shape[0], 1)
+    height = cameras.height[0].repeat(poses.shape[0], 1)
     
     cameras = Cameras(
         fx=Ks[:, 0, 0],
@@ -48,7 +51,9 @@ def get_interpolated_camera_path(cameras: Cameras, steps: int, order_poses: bool
         cy=Ks[0, 1, 2],
         camera_type=cameras.camera_type[0],
         camera_to_worlds=poses,
-        times=times
+        times=times,
+        width=width,
+        height=height
     )
     return cameras
 
