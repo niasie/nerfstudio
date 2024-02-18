@@ -764,7 +764,7 @@ class RenderTranslated(BaseRender):
     pose_source: Literal["eval", "train"] = "eval"
     """Pose source to render."""
     translation: Tuple[float, float, float] = (1.0, 1.0, 1.0)
-    """Translation factor (x,y,z) in meters by which to maximally disturb the dataset view by."""
+    """Translation factor (x,y,z) in meters by which to disturb the dataset view by."""
     frame_rate: int = 24
     """Frame rate of the output video."""
     output_format: Literal["images", "video", "numpy", "raw-separate"] = "video"
