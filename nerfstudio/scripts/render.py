@@ -84,7 +84,7 @@ def _render_trajectory_video(
     depth_near_plane: Optional[float] = None,
     depth_far_plane: Optional[float] = None,
     colormap_options: colormaps.ColormapOptions = colormaps.ColormapOptions(),
-    max_depth: float = 85.0
+    max_depth: float = 85.0,
 ) -> None:
     """Helper function to create a video of the spiral trajectory.
 
@@ -400,7 +400,7 @@ class BaseRender:
     """Furthest depth to consider when using the colormap for depth. If None, use max value."""
     colormap_options: colormaps.ColormapOptions = colormaps.ColormapOptions()
     """Colormap options."""
-    max_depth : float = 85.0
+    max_depth: float = 85.0
     """Furthest valid depth to render."""
 
 
@@ -466,7 +466,7 @@ class RenderCameraPath(BaseRender):
             depth_near_plane=self.depth_near_plane,
             depth_far_plane=self.depth_far_plane,
             colormap_options=self.colormap_options,
-            max_depth=self.max_depth
+            max_depth=self.max_depth,
         )
 
         if (
@@ -500,7 +500,7 @@ class RenderCameraPath(BaseRender):
                 depth_near_plane=self.depth_near_plane,
                 depth_far_plane=self.depth_far_plane,
                 colormap_options=self.colormap_options,
-                max_depth=self.max_depth
+                max_depth=self.max_depth,
             )
 
             self.output_path = Path(str(left_eye_path.parent)[:-5] + ".mp4")
@@ -618,7 +618,7 @@ class RenderInterpolated(BaseRender):
                 depth_near_plane=self.depth_near_plane,
                 depth_far_plane=self.depth_far_plane,
                 colormap_options=self.colormap_options,
-                max_depth=self.max_depth
+                max_depth=self.max_depth,
             )
 
 
@@ -686,7 +686,7 @@ class RenderAngled(BaseRender):
                 depth_near_plane=self.depth_near_plane,
                 depth_far_plane=self.depth_far_plane,
                 colormap_options=self.colormap_options,
-                max_depth=self.max_depth
+                max_depth=self.max_depth,
             )
 
 
@@ -758,7 +758,7 @@ class RenderDisturbed(BaseRender):
                 depth_near_plane=self.depth_near_plane,
                 depth_far_plane=self.depth_far_plane,
                 colormap_options=self.colormap_options,
-                max_depth=self.max_depth
+                max_depth=self.max_depth,
             )
 
 
@@ -884,7 +884,7 @@ class SpiralRender(BaseRender):
             depth_near_plane=self.depth_near_plane,
             depth_far_plane=self.depth_far_plane,
             colormap_options=self.colormap_options,
-            max_depth=self.max_depth
+            max_depth=self.max_depth,
         )
 
 
@@ -895,6 +895,7 @@ Commands = tyro.conf.FlagConversionOff[
         Annotated[RenderInterpolated, tyro.conf.subcommand(name="interpolate")],
         Annotated[SpiralRender, tyro.conf.subcommand(name="spiral")],
         Annotated[RenderDisturbed, tyro.conf.subcommand(name="disturbed")],
+        Annotated[RenderTranslated, tyro.conf.subcommand(name="translated")],
     ]
 ]
 
