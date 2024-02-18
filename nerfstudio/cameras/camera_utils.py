@@ -185,6 +185,7 @@ def get_interpolated_poses(pose_a: NDArray, pose_b: NDArray, steps: int = 10) ->
         poses_ab.append(pose[:3])
     return poses_ab
 
+
 def get_interpolated_k(
     k_a: Float[Tensor, "3 3"], k_b: Float[Tensor, "3 3"], steps: int = 10
 ) -> List[Float[Tensor, "3 4"]]:
@@ -206,12 +207,9 @@ def get_interpolated_k(
         Ks.append(new_k)
     return Ks
 
-def get_interpolated_times(
-    time_a: Float, time_b: Float, steps: int = 10
-) -> List:
-    """
-    
-    """
+
+def get_interpolated_times(time_a: Float, time_b: Float, steps: int = 10) -> List:
+    """ """
     times = []
     ts = np.linspace(0, 1, steps) if steps > 1 else np.array([0.5])
     for t in ts:
@@ -292,17 +290,21 @@ def get_interpolated_poses_many(
         time_b = times[idx + 1].cpu().numpy()
         times_interp += get_interpolated_times(time_a, time_b, steps=steps_per_transition)
 
-
     traj = np.stack(traj, axis=0)
     k_interp = torch.stack(k_interp, dim=0)
     times_interp = np.stack(times_interp, axis=0)
 
-    return torch.tensor(traj, dtype=torch.float32), torch.tensor(k_interp, dtype=torch.float32), torch.tensor(times_interp, dtype=torch.float32)
+    return (
+        torch.tensor(traj, dtype=torch.float32),
+        torch.tensor(k_interp, dtype=torch.float32),
+        torch.tensor(times_interp, dtype=torch.float32),
+    )
+
 
 def get_angled_poses(
     poses: Float[Tensor, "num_poses 3 4"],
     Ks: Float[Tensor, "num_poses 3 3"],
-    angle: float = 0.,
+    angle: float = 0.0,
 ) -> Tuple[Float[Tensor, "num_poses 3 4"], Float[Tensor, "num_poses 3 3"]]:
     """Return angled poses for many camera poses.
 
@@ -317,20 +319,19 @@ def get_angled_poses(
     traj = []
     k = []
 
-    unit_vec = torch.tensor([0., 0., -1.], dtype=torch.float32)
-    angled_vec = torch.tensor([-np.sin(angle * np.pi / 180.), 0., -np.cos(angle * np.pi / 180.)], dtype=torch.float32)
-    
+    unit_vec = torch.tensor([0.0, 0.0, -1.0], dtype=torch.float32)
+    angled_vec = torch.tensor(
+        [-np.sin(angle * np.pi / 180.0), 0.0, -np.cos(angle * np.pi / 180.0)], dtype=torch.float32
+    )
+
     angle = angle * np.pi / 180
 
-    rotmat = np.transpose(np.array([[np.cos(angle), -np.sin(angle), 0],
-                                    [np.sin(angle), np.cos(angle), 0],
-                                    [0, 0, 1]]))
-
+    rotmat = np.transpose(np.array([[np.cos(angle), -np.sin(angle), 0], [np.sin(angle), np.cos(angle), 0], [0, 0, 1]]))
 
     for idx in range(poses.shape[0]):
         pose = poses[idx].cpu().numpy()
         pose[:, :3] = rotmat @ pose[:, :3]
-        
+
         traj.append(pose)
         k.append(Ks[idx])
 
@@ -339,12 +340,13 @@ def get_angled_poses(
 
     return torch.tensor(traj, dtype=torch.float32), torch.tensor(k, dtype=torch.float32)
 
+
 def get_disturbed_poses(
     poses: Float[Tensor, "num_poses 3 4"],
     Ks: Float[Tensor, "num_poses 3 3"],
     disturb_translation: Tuple[float, float, float] = (0.0, 0.0, 0.0),
     disturb_rotation: Tuple[float, float, float] = (0.0, 0.0, 0.0),
-    data_multiplier: int = 1
+    data_multiplier: int = 1,
 ) -> Tuple[Float[Tensor, "num_poses 3 4"], Float[Tensor, "num_poses 3 3"]]:
     """Return disturbed poses for given camera poses.
 
@@ -369,16 +371,16 @@ def get_disturbed_poses(
     inter_pose_distances_xy = []
     inter_pose_distances_z = []
 
-    for idx in range(poses.shape[0]-1):
+    for idx in range(poses.shape[0] - 1):
         pose_now = poses[idx].cpu().numpy()
-        pose_next = poses[idx+1].cpu().numpy()
+        pose_next = poses[idx + 1].cpu().numpy()
 
-        distance_xy = np.linalg.norm(pose_next[:,0:2] - pose_now[:,0:2])
-        distance_z = np.linalg.norm(pose_next[:,2] - pose_now[:,2])
+        distance_xy = np.linalg.norm(pose_next[:, 0:2] - pose_now[:, 0:2])
+        distance_z = np.linalg.norm(pose_next[:, 2] - pose_now[:, 2])
 
         inter_pose_distances_xy.append(distance_xy)
         inter_pose_distances_z.append(distance_z)
-    
+
     avg_pose_distance_xy = sum(inter_pose_distances_xy) / len(inter_pose_distances_xy)
     avg_pose_distance_z = sum(inter_pose_distances_z) / len(inter_pose_distances_z)
 
@@ -386,32 +388,29 @@ def get_disturbed_poses(
     max_pose_translation_x = disturb_translation[0] * avg_pose_distance_xy
     max_pose_translation_y = disturb_translation[1] * avg_pose_distance_xy
     max_pose_translation_z = disturb_translation[2] * avg_pose_distance_z
-    
+
     # Loop over all poses
     for idx in range(poses.shape[0]):
-
         # Repeat data_multiplier times for each pose
         for _ in range(data_multiplier):
-
             # Now randomly determine around which axis to rotate and by how much
             angle_x = np.random.uniform(-max_angle_x, max_angle_x)
             angle_y = np.random.uniform(-max_angle_y, max_angle_y)
             angle_z = np.random.uniform(-max_angle_z, max_angle_z)
 
-            rotmat_x = np.array(    [[1, 0, 0],
-                                    [0, np.cos(angle_x), -np.sin(angle_x)],
-                                    [0, np.sin(angle_x), np.cos(angle_x)]])
-            
-            rotmat_y = np.array(    [[np.cos(angle_y), 0, np.sin(angle_y)],
-                                    [0, 1, 0],
-                                    [-np.sin(angle_y), 0, np.cos(angle_y)]])
-            
-            rotmat_z = np.array(    [[np.cos(angle_z), -np.sin(angle_z), 0],
-                                    [np.sin(angle_z), np.cos(angle_z), 0],
-                                    [0, 0, 1]])
-            
+            rotmat_x = np.array(
+                [[1, 0, 0], [0, np.cos(angle_x), -np.sin(angle_x)], [0, np.sin(angle_x), np.cos(angle_x)]]
+            )
+
+            rotmat_y = np.array(
+                [[np.cos(angle_y), 0, np.sin(angle_y)], [0, 1, 0], [-np.sin(angle_y), 0, np.cos(angle_y)]]
+            )
+
+            rotmat_z = np.array(
+                [[np.cos(angle_z), -np.sin(angle_z), 0], [np.sin(angle_z), np.cos(angle_z), 0], [0, 0, 1]]
+            )
+
             rotmat = rotmat_x @ rotmat_y @ rotmat_z
-            
 
             # Now randomly determine how much to translate
             translation_x = np.random.uniform(-max_pose_translation_x, max_pose_translation_x)
@@ -426,8 +425,8 @@ def get_disturbed_poses(
 
             pose = poses[idx].cpu().numpy()
             pose[:, :3] = rotmat @ pose[:, :3]
-            pose[:,3] += translation_vec
-            
+            pose[:, 3] += translation_vec
+
             traj.append(pose)
             k.append(Ks[idx])
 
@@ -435,6 +434,40 @@ def get_disturbed_poses(
     k = torch.stack(k, dim=0)
 
     return torch.tensor(traj, dtype=torch.float32), torch.tensor(k, dtype=torch.float32)
+
+
+def get_translated_poses(
+    poses: Float[Tensor, "num_poses 3 4"],
+    Ks: Float[Tensor, "num_poses 3 3"],
+    translation: Tuple[float, float, float] = (0.0, 0.0, 0.0),
+    scale: float = 1.0,
+) -> Tuple[Float[Tensor, "num_poses 3 4"], Float[Tensor, "num_poses 3 3"]]:
+    """Return translated poses for many camera poses.
+
+    Args:
+        poses: list of camera poses
+        Ks: list of camera intrinsics
+        translation: translation in each direction in m
+        scale: multiplying the poses with 1 / scale converts them to meters
+
+    Returns:
+        tuple of new poses and intrinsics
+    """
+    traj = []
+    k = []
+
+    for idx in range(poses.shape[0]):
+        pose = poses[idx].cpu().numpy()
+        pose[:, 3] += pose[:, :3] @ translation
+
+        traj.append(pose)
+        k.append(Ks[idx])
+
+    traj = np.stack(traj, axis=0)
+    k = torch.stack(k, dim=0)
+
+    return torch.tensor(traj, dtype=torch.float32), torch.tensor(k, dtype=torch.float32)
+
 
 def normalize(x: torch.Tensor) -> Float[Tensor, "*batch"]:
     """Returns a normalized vector."""

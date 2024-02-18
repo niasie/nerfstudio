@@ -22,7 +22,12 @@ import torch
 
 import nerfstudio.utils.poses as pose_utils
 from nerfstudio.cameras import camera_utils
-from nerfstudio.cameras.camera_utils import get_interpolated_poses_many, get_angled_poses, get_disturbed_poses, get_interpolated_times
+from nerfstudio.cameras.camera_utils import (
+    get_interpolated_poses_many,
+    get_angled_poses,
+    get_disturbed_poses,
+    get_translated_poses,
+)
 from nerfstudio.cameras.cameras import Cameras, CameraType
 from nerfstudio.viewer.server.utils import three_js_perspective_camera_focal_length
 
@@ -39,8 +44,10 @@ def get_interpolated_camera_path(cameras: Cameras, steps: int, order_poses: bool
     """
     Ks = cameras.get_intrinsics_matrices()
     poses = cameras.camera_to_worlds
-    poses, Ks, times = get_interpolated_poses_many(poses, Ks, times=cameras.times, steps_per_transition=steps, order_poses=order_poses)
-    
+    poses, Ks, times = get_interpolated_poses_many(
+        poses, Ks, times=cameras.times, steps_per_transition=steps, order_poses=order_poses
+    )
+
     cameras = Cameras(
         fx=Ks[:, 0, 0],
         fy=Ks[:, 1, 1],
@@ -48,9 +55,10 @@ def get_interpolated_camera_path(cameras: Cameras, steps: int, order_poses: bool
         cy=Ks[0, 1, 2],
         camera_type=cameras.camera_type[0],
         camera_to_worlds=poses,
-        times=times
+        times=times,
     )
     return cameras
+
 
 def get_angled_camera_path(cameras: Cameras, angle: float) -> Cameras:
     """Generate a camera path with an angled camera
@@ -73,15 +81,17 @@ def get_angled_camera_path(cameras: Cameras, angle: float) -> Cameras:
         camera_type=cameras.camera_type[0],
         camera_to_worlds=poses,
         width=cameras.width,
-        height=cameras.height
+        height=cameras.height,
     )
     return cameras
 
-def get_disturbed_camera_path(  cameras: Cameras, 
-                                disturb_translation: Tuple[float, float, float], 
-                                disturb_rotation: Tuple[float, float, float],
-                                data_multiplier: int,
-    ) -> Cameras:
+
+def get_disturbed_camera_path(
+    cameras: Cameras,
+    disturb_translation: Tuple[float, float, float],
+    disturb_rotation: Tuple[float, float, float],
+    data_multiplier: int,
+) -> Cameras:
     """Generate a camera path with random disturbances of cameras
 
     Args:
@@ -95,17 +105,16 @@ def get_disturbed_camera_path(  cameras: Cameras,
 
     assert data_multiplier > 0
     assert isinstance(data_multiplier, int)
-    
+
     Ks = cameras.get_intrinsics_matrices()
     poses = cameras.camera_to_worlds
-    poses, Ks = get_disturbed_poses(poses, 
-                                    Ks, 
-                                    disturb_translation=disturb_translation, 
-                                    disturb_rotation=disturb_rotation,
-                                    data_multiplier=data_multiplier
-                                    )
-
-
+    poses, Ks = get_disturbed_poses(
+        poses,
+        Ks,
+        disturb_translation=disturb_translation,
+        disturb_rotation=disturb_rotation,
+        data_multiplier=data_multiplier,
+    )
 
     width = cameras.width.repeat(data_multiplier, 1)
     height = cameras.height.repeat(data_multiplier, 1)
@@ -118,7 +127,25 @@ def get_disturbed_camera_path(  cameras: Cameras,
         camera_type=cameras.camera_type[0],
         camera_to_worlds=poses,
         width=width,
-        height=height
+        height=height,
+    )
+    return cameras
+
+
+def get_translated_camera_path(cameras: Cameras, translation: Tuple[float, float, float], scale: float) -> Cameras:
+    Ks = cameras.get_intrinsics_matrices()
+    poses = cameras.camera_to_worlds
+    poses, Ks = get_translated_poses(poses, Ks, translation=translation, scale=scale)
+
+    cameras = Cameras(
+        fx=Ks[:, 0, 0],
+        fy=Ks[:, 1, 1],
+        cx=Ks[0, 0, 2],
+        cy=Ks[0, 1, 2],
+        camera_type=cameras.camera_type[0],
+        camera_to_worlds=poses,
+        width=cameras.width,
+        height=cameras.height,
     )
     return cameras
 

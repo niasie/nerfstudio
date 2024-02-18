@@ -54,6 +54,7 @@ from nerfstudio.cameras.camera_paths import (
     get_path_from_json,
     get_spiral_path,
     get_disturbed_camera_path,
+    get_translated_camera_path,
 )
 from nerfstudio.cameras.cameras import Cameras, CameraType
 from nerfstudio.data.datamanagers.base_datamanager import VanillaDataManager
@@ -118,11 +119,10 @@ def _render_trajectory_video(
 
     DATAPARSER_SCALE = pipeline.datamanager.train_dataparser_outputs.dataparser_scale
 
-    if hasattr(pipeline.datamanager.dataparser_config, 'depth_unit_scale_factor'):
+    if hasattr(pipeline.datamanager.dataparser_config, "depth_unit_scale_factor"):
         DEPTH_UNIT_SCALE = pipeline.datamanager.dataparser_config.depth_unit_scale_factor
     else:
         DEPTH_UNIT_SCALE = 1.0
-        
 
     output_image_dir = output_filename.parent / output_filename.stem
     if output_format in ("images", "numpy", "raw-separate"):
@@ -170,25 +170,27 @@ def _render_trajectory_video(
                     output_image = outputs[rendered_output_name]
                     is_depth = rendered_output_name.find("depth") != -1
 
-                    #Depth branch
+                    # Depth branch
                     if is_depth:
                         if output_format == "numpy":
                             output_image = output_image.cpu().numpy()
                             np.save(output_image_dir / f"{camera_idx:05d}_depth.npy", output_image)
 
                         elif output_format == "raw-separate":
-                            output_image = np.squeeze(output_image.cpu().numpy()) * (1 / DEPTH_UNIT_SCALE) * (1 / DATAPARSER_SCALE)
+                            output_image = (
+                                np.squeeze(output_image.cpu().numpy()) * (1 / DEPTH_UNIT_SCALE) * (1 / DATAPARSER_SCALE)
+                            )
 
                             MAX_DEPTH = 85.0 / DEPTH_UNIT_SCALE
 
                             output_image = np.where(output_image < MAX_DEPTH, output_image, 0)
-                            
+
                             output_image = output_image.astype("uint16")
 
                             # plt.imshow(output_image)
                             # plt.show()
                             cv2.imwrite(str(output_image_dir / f"{camera_idx:05d}_depth.png"), output_image)
-                            
+
                         elif output_format in ("images", "video"):
                             output_image = (
                                 colormaps.apply_depth_colormap(
@@ -201,7 +203,7 @@ def _render_trajectory_video(
                                 .cpu()
                                 .numpy()
                             )
-                            
+
                             render_image.append(output_image)
 
                         else:
@@ -209,8 +211,7 @@ def _render_trajectory_video(
                             CONSOLE.print(f"Specified output-format doesn't exist", justify="center")
                             sys.exit(1)
 
-
-                    #RGB Branch
+                    # RGB Branch
                     else:
                         output_image = (
                             colormaps.apply_colormap(
@@ -231,8 +232,7 @@ def _render_trajectory_video(
                             CONSOLE.rule("Error", style="red")
                             CONSOLE.print(f"Specified output-format doesn't exist", justify="center")
                             sys.exit(1)
-                    
-                
+
                 if output_format == "images":
                     render_image = np.concatenate(render_image, axis=0)
 
@@ -256,7 +256,6 @@ def _render_trajectory_video(
                             )
                         )
                     writer.add_image(render_image)
-
 
     table = Table(
         title=None,
@@ -590,12 +589,16 @@ class RenderInterpolated(BaseRender):
         if self.save_poses and self.output_format != "video":
             self.output_path.mkdir(parents=True, exist_ok=True)
             parser = pipeline.datamanager.train_dataparser_outputs
-            trafoed_outs = trafo(camera_path.camera_to_worlds.cpu(), parser.dataparser_transform, parser.dataparser_scale, camera_convention="opencv")
+            trafoed_outs = trafo(
+                camera_path.camera_to_worlds.cpu(),
+                parser.dataparser_transform,
+                parser.dataparser_scale,
+                camera_convention="opencv",
+            )
             cam_json = json.dumps(trafoed_outs.numpy().tolist())
             # camera_path.cx[0,0] ...
-            with open(self.output_path / Path("cam_poses.json"), 'w') as json_file:
+            with open(self.output_path / Path("cam_poses.json"), "w") as json_file:
                 json_file.write(cam_json)
-
 
         if self.do_render:
             _render_trajectory_video(
@@ -612,13 +615,14 @@ class RenderInterpolated(BaseRender):
                 colormap_options=self.colormap_options,
             )
 
+
 @dataclass
 class RenderAngled(BaseRender):
     """Render a trajectory that which angles the original dataset."""
 
     pose_source: Literal["eval", "train"] = "eval"
     """Pose source to render."""
-    angle: float = 45.
+    angle: float = 45.0
     """Degrees to angle the dataset view by."""
     frame_rate: int = 24
     """Frame rate of the output video."""
@@ -647,18 +651,20 @@ class RenderAngled(BaseRender):
             cameras = pipeline.datamanager.train_dataset.cameras
 
         seconds = len(cameras) / self.frame_rate
-        camera_path = get_angled_camera_path(
-            cameras=cameras,
-            angle=self.angle
-        )
+        camera_path = get_angled_camera_path(cameras=cameras, angle=self.angle)
 
         if self.save_poses and self.output_format != "video":
             self.output_path.mkdir(parents=True, exist_ok=True)
             parser = pipeline.datamanager.train_dataparser_outputs
-            trafoed_outs = trafo(camera_path.camera_to_worlds.cpu(), parser.dataparser_transform, parser.dataparser_scale, camera_convention="opencv")
+            trafoed_outs = trafo(
+                camera_path.camera_to_worlds.cpu(),
+                parser.dataparser_transform,
+                parser.dataparser_scale,
+                camera_convention="opencv",
+            )
             cam_json = json.dumps(trafoed_outs.numpy().tolist())
             # camera_path.cx[0,0] ...
-            with open(self.output_path / Path("cam_poses.json"), 'w') as json_file:
+            with open(self.output_path / Path("cam_poses.json"), "w") as json_file:
                 json_file.write(cam_json)
 
         if self.do_render:
@@ -675,6 +681,7 @@ class RenderAngled(BaseRender):
                 depth_far_plane=self.depth_far_plane,
                 colormap_options=self.colormap_options,
             )
+
 
 @dataclass
 class RenderDisturbed(BaseRender):
@@ -728,7 +735,7 @@ class RenderDisturbed(BaseRender):
             self.output_path.mkdir(parents=True, exist_ok=True)
             cam = camera_path.camera_to_worlds.cpu().numpy().tolist()
             cam_json = json.dumps(cam)
-            with open(self.output_path / Path("cam_poses.json"), 'w') as json_file:
+            with open(self.output_path / Path("cam_poses.json"), "w") as json_file:
                 json_file.write(cam_json)
 
         if self.do_render:
@@ -745,6 +752,72 @@ class RenderDisturbed(BaseRender):
                 depth_far_plane=self.depth_far_plane,
                 colormap_options=self.colormap_options,
             )
+
+
+@dataclass
+class RenderTranslated(BaseRender):
+    """Render a trajectory with translations of the original poses."""
+
+    """Todo:    For rotation: list with axis and then list with angles
+                For Translation: list with axis and then list with translation factors """
+
+    pose_source: Literal["eval", "train"] = "eval"
+    """Pose source to render."""
+    translation: Tuple[float, float, float] = (1.0, 1.0, 1.0)
+    """Translation factor (x,y,z) in meters by which to maximally disturb the dataset view by."""
+    frame_rate: int = 24
+    """Frame rate of the output video."""
+    output_format: Literal["images", "video", "numpy", "raw-separate"] = "video"
+    """How to save output data."""
+    save_poses: bool = True
+    """Whether to save poses used for rendering."""
+    do_render: bool = True
+
+    def main(self) -> None:
+        """Main function."""
+        _, pipeline, _, _ = eval_setup(
+            self.load_config,
+            eval_num_rays_per_chunk=self.eval_num_rays_per_chunk,
+            test_mode="test",
+        )
+
+        install_checks.check_ffmpeg_installed()
+
+        if self.pose_source == "eval":
+            assert pipeline.datamanager.eval_dataset is not None
+            cameras = pipeline.datamanager.eval_dataset.cameras
+        else:
+            assert pipeline.datamanager.train_dataset is not None
+            cameras = pipeline.datamanager.train_dataset.cameras
+
+        seconds = len(cameras) / self.frame_rate
+
+        dataparser_scale = pipeline.datamanager.train_dataparser_outputs.dataparser_scale
+
+        camera_path = get_translated_camera_path(cameras=cameras, translation=self.translation, scale=dataparser_scale)
+
+        if self.save_poses and self.output_format != "video":
+            self.output_path.mkdir(parents=True, exist_ok=True)
+            cam = camera_path.camera_to_worlds.cpu().numpy().tolist()
+            cam_json = json.dumps(cam)
+            with open(self.output_path / Path("cam_poses.json"), "w") as json_file:
+                json_file.write(cam_json)
+
+        if self.do_render:
+            _render_trajectory_video(
+                pipeline,
+                camera_path,
+                output_filename=self.output_path,
+                rendered_output_names=self.rendered_output_names,
+                rendered_resolution_scaling_factor=1.0 / self.downscale_factor,
+                seconds=seconds,
+                output_format=self.output_format,
+                image_format=self.image_format,
+                depth_near_plane=self.depth_near_plane,
+                depth_far_plane=self.depth_far_plane,
+                colormap_options=self.colormap_options,
+            )
+
 
 @dataclass
 class SpiralRender(BaseRender):
@@ -780,10 +853,15 @@ class SpiralRender(BaseRender):
         if self.save_poses and self.output_format != "video":
             self.output_path.mkdir(parents=True, exist_ok=True)
             parser = pipeline.datamanager.train_dataparser_outputs
-            trafoed_outs = trafo(camera_path.camera_to_worlds.cpu(), parser.dataparser_transform, parser.dataparser_scale, camera_convention="opencv")
+            trafoed_outs = trafo(
+                camera_path.camera_to_worlds.cpu(),
+                parser.dataparser_transform,
+                parser.dataparser_scale,
+                camera_convention="opencv",
+            )
             cam_json = json.dumps(trafoed_outs.numpy().tolist())
             # camera_path.cx[0,0] ...
-            with open(self.output_path / Path("cam_poses.json"), 'w') as json_file:
+            with open(self.output_path / Path("cam_poses.json"), "w") as json_file:
                 json_file.write(cam_json)
 
         _render_trajectory_video(
