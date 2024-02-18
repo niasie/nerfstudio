@@ -458,7 +458,7 @@ def get_translated_poses(
 
     for idx in range(poses.shape[0]):
         pose = poses[idx].cpu().numpy()
-        pose[:, 3] += pose[:, :3] @ translation
+        pose[:, 3] += pose[:, :3] @ translation * scale
 
         traj.append(pose)
         k.append(Ks[idx])
