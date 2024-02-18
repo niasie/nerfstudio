@@ -789,7 +789,7 @@ class RenderTranslated(BaseRender):
             test_mode="test",
         )
 
-        if output_format == "video":
+        if self.output_format == "video":
             install_checks.check_ffmpeg_installed()
 
         if self.pose_source == "eval":
