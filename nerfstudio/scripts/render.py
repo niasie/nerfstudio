@@ -789,7 +789,8 @@ class RenderTranslated(BaseRender):
             test_mode="test",
         )
 
-        install_checks.check_ffmpeg_installed()
+        if output_format == "video":
+            install_checks.check_ffmpeg_installed()
 
         if self.pose_source == "eval":
             assert pipeline.datamanager.eval_dataset is not None
